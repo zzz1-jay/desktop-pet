@@ -225,6 +225,70 @@ ipcMain.on('chat:close', () => {
   if (chatWindow && !chatWindow.isDestroyed()) chatWindow.hide();
 });
 
+// ---- AI 问答：GLM-4-Flash（OpenAI 兼容接口）----
+// key 存在项目根目录的 config.local.json（已 gitignore），只在这里读，渲染进程拿不到
+
+const CONFIG_LOCAL_PATH = path.join(__dirname, 'config.local.json');
+
+const SYSTEM_PROMPT =
+  '你是「小橘」，一只圆滚滚的橘色像素小猫桌宠，住在主人的 Windows 桌面上。' +
+  '性格黏人、好奇、有点贪吃。用简短的中文回答（一般不超过两三句话），语气可爱自然，' +
+  '偶尔可以用「喵」或颜文字收尾，但不要每句都用。' +
+  '如果主人问正经问题（比如学习、技术），就认真、简洁、准确地回答，保持小猫的角色感即可。';
+
+function readLocalConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(CONFIG_LOCAL_PATH, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+ipcMain.handle('chat:ask', async (_event, messages) => {
+  const cfg = readLocalConfig();
+  if (!cfg.apiKey || cfg.apiKey.includes('填')) {
+    return {
+      ok: false,
+      error:
+        '还没有配置 API key 喵。\n在项目根目录创建 config.local.json（可复制 config.local.example.json），填入智谱开放平台的免费 key，再发一句话试试。',
+    };
+  }
+
+  const apiBase = cfg.apiBase || 'https://open.bigmodel.cn/api/paas/v4';
+  const model = cfg.model || 'glm-4-flash';
+
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 30000);
+    const res = await fetch(`${apiBase}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${cfg.apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        stream: false,
+        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
+      }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    const data = await res.json();
+    if (!res.ok) {
+      const detail = data?.error?.message || `HTTP ${res.status}`;
+      return { ok: false, error: `AI 接口返回了错误：${detail}` };
+    }
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return { ok: false, error: 'AI 返回了空回复，再问一次试试喵。' };
+    return { ok: true, content };
+  } catch (err) {
+    const reason = err.name === 'AbortError' ? '请求超时了（30 秒）' : err.message || String(err);
+    return { ok: false, error: `连不上 AI：${reason}` };
+  }
+});
+
 // ---- 拖拽：主进程每 16ms 读一次鼠标位置，把窗口「贴」在鼠标上 ----
 // 渲染进程只发开始 / 结束信号；顺便按鼠标横向移动量回传倾斜角度
 const tiltDeg = petConfig.animation.tiltDeg;

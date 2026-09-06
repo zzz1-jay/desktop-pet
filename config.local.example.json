@@ -1,0 +1,5 @@
+{
+  "apiKey": "在这里填入你在智谱开放平台（open.bigmodel.cn）申请的 API key",
+  "model": "glm-4-flash",
+  "apiBase": "https://open.bigmodel.cn/api/paas/v4"
+}
