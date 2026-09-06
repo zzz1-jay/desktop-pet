@@ -36,11 +36,32 @@ function scheduleBlink() {
   setTimeout(() => {
     drawFrame(cat.frames.blink);
     setTimeout(() => {
-      drawFrame(cat.frames.open);
+      drawCurrent();
       scheduleBlink();
     }, anim.blinkDurationMs);
   }, delay);
 }
+
+// ---- 说话反应：聊天窗等 AI 回复时，嘴巴一张一合 ----
+let talking = false;
+let talkPhase = 0;
+
+// 当前应该显示的帧（说话时在张嘴 / 闭嘴之间切换）
+function drawCurrent() {
+  drawFrame(talking && talkPhase ? cat.frames.talk : cat.frames.open);
+}
+
+setInterval(() => {
+  if (!talking) return;
+  talkPhase = 1 - talkPhase;
+  drawCurrent();
+}, 180);
+
+window.petAPI.onTalk((on) => {
+  talking = on;
+  talkPhase = 0;
+  drawCurrent();
+});
 
 drawFrame(cat.frames.open);
 scheduleBlink();

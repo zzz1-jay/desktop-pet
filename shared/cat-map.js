@@ -109,8 +109,8 @@ function outline(g) {
 
 // ---- 画猫 --------------------------------------------------------------
 
-// 画除眼睛外的所有部分（睁眼 / 闭眼都要用到这份底图）
-function buildBase() {
+// 画身体（不含眼睛 / 鼻子 / 嘴，方便组合出不同的表情帧）
+function buildBody() {
   const g = newGrid();
 
   // 身体和头（圆心都在画布中轴 x=32 上，天然左右对称）
@@ -148,13 +148,6 @@ function buildBase() {
   fillEllipse(g, 32, 49, 9, 9, 'W');
   fillEllipse(g, 32, 30.5, 7, 4.5, 'W');
 
-  // 鼻子（粉色小三角）和 ω 形嘴
-  fillRect(g, 30, 27, 4, 1, 'P');
-  fillRect(g, 31, 28, 2, 1, 'P');
-  fillRect(g, 31, 29, 2, 1, 'E');
-  fillRect(g, 29, 30, 2, 1, 'E');
-  fillRect(g, 33, 30, 2, 1, 'E');
-
   // 头顶三道条纹（经典的橘猫 "M" 额头纹）
   fillRect(g, 31, 10, 2, 7, 'D', { onlyOver: ['O'] });
   fillRect(g, 27, 11, 2, 6, 'D', { onlyOver: ['O'] });
@@ -168,34 +161,53 @@ function buildBase() {
   return g;
 }
 
-// 睁眼版：黑亮的大眼睛 + 左上角高光
-function withOpenEyes(base) {
-  const g = base.map((r) => r.slice());
-  fillEllipse(g, 24.5, 22, 3, 4, 'E');
-  fillEllipse(g, 38.5, 22, 3, 4, 'E');
-  fillRect(g, 23, 19, 2, 2, 'H');
-  fillRect(g, 39, 19, 2, 2, 'H');
-  return g;
+// 眼睛：睁眼（黑亮的大眼睛 + 左上角高光）或闭眼（两条向下弯的小弧线）
+function drawEyes(g, mode) {
+  if (mode === 'open') {
+    fillEllipse(g, 24.5, 22, 3, 4, 'E');
+    fillEllipse(g, 38.5, 22, 3, 4, 'E');
+    fillRect(g, 23, 19, 2, 2, 'H');
+    fillRect(g, 39, 19, 2, 2, 'H');
+  } else {
+    fillRect(g, 22, 21, 6, 1, 'E');
+    fillRect(g, 23, 22, 4, 1, 'E');
+    fillRect(g, 36, 21, 6, 1, 'E');
+    fillRect(g, 37, 22, 4, 1, 'E');
+  }
 }
 
-// 闭眼版：两条向下弯的小弧线
-function withClosedEyes(base) {
-  const g = base.map((r) => r.slice());
-  fillRect(g, 22, 21, 6, 1, 'E');
-  fillRect(g, 23, 22, 4, 1, 'E');
-  fillRect(g, 36, 21, 6, 1, 'E');
-  fillRect(g, 37, 22, 4, 1, 'E');
-  return g;
+// 嘴：闭嘴（ω 形）或张嘴（说话时的小圆嘴 + 粉舌头）
+function drawMouth(g, mode) {
+  // 鼻子（粉色小三角）两种嘴型都要
+  fillRect(g, 30, 27, 4, 1, 'P');
+  fillRect(g, 31, 28, 2, 1, 'P');
+
+  if (mode === 'closed') {
+    fillRect(g, 31, 29, 2, 1, 'E'); // 人中
+    fillRect(g, 29, 30, 2, 1, 'E'); // 左嘴角
+    fillRect(g, 33, 30, 2, 1, 'E'); // 右嘴角
+  } else {
+    fillEllipse(g, 32, 31.5, 2.6, 2.2, 'E'); // 张开的嘴
+    fillEllipse(g, 32, 32.6, 1.3, 0.9, 'P', { onlyOver: ['E'] }); // 小舌头
+  }
 }
 
-const base = buildBase();
+// 组合出一帧表情：eyes = 'open' | 'closed'，mouth = 'closed' | 'open'
+function buildFace(eyes, mouth) {
+  const g = buildBody();
+  drawMouth(g, mouth);
+  drawEyes(g, eyes);
+  return outline(g);
+}
+
 const toRows = (g) => g.map((r) => r.join(''));
 
 module.exports = {
   size: SIZE,
   palette: PALETTE,
   frames: {
-    open: toRows(outline(withOpenEyes(base))),
-    blink: toRows(outline(withClosedEyes(base))),
+    open: toRows(buildFace('open', 'closed')), // 待机：睁眼闭嘴
+    blink: toRows(buildFace('closed', 'closed')), // 眨眼：闭眼闭嘴
+    talk: toRows(buildFace('open', 'open')), // 说话：睁眼张嘴
   },
 };

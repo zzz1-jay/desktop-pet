@@ -64,7 +64,8 @@ async function send() {
 
 sendEl.addEventListener('click', send);
 inputEl.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') send();
+  // e.isComposing：输入法选字过程中的回车不算发送
+  if (e.key === 'Enter' && !e.isComposing) send();
 });
 
 // ---- 窗口控制 ----

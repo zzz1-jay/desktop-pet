@@ -257,6 +257,12 @@ ipcMain.handle('chat:ask', async (_event, messages) => {
   const apiBase = cfg.apiBase || 'https://open.bigmodel.cn/api/paas/v4';
   const model = cfg.model || 'glm-4-flash';
 
+  // 等 AI 回复期间，让桌宠播放「说话」动画
+  const talkTo = (on) => {
+    if (petWindow && !petWindow.isDestroyed()) petWindow.webContents.send('pet:talk', on);
+  };
+  talkTo(true);
+
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 30000);
@@ -286,6 +292,8 @@ ipcMain.handle('chat:ask', async (_event, messages) => {
   } catch (err) {
     const reason = err.name === 'AbortError' ? '请求超时了（30 秒）' : err.message || String(err);
     return { ok: false, error: `连不上 AI：${reason}` };
+  } finally {
+    talkTo(false);
   }
 });
 

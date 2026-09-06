@@ -45,3 +45,4 @@ function render(rows, file) {
 
 render(cat.frames.open, 'preview-open.png');
 render(cat.frames.blink, 'preview-blink.png');
+render(cat.frames.talk, 'preview-talk.png');
