@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>小桌宠</title>
+  <link rel="stylesheet" href="pet.css" />
+</head>
+<body>
+  <!-- 三层动画结构：浮动（最外）→ 倾斜 → 弹跳（最内），互不干扰 -->
+  <div id="float">
+    <div id="tilt">
+      <div id="bounce">
+        <canvas id="pet" width="64" height="64"></canvas>
+      </div>
+    </div>
+  </div>
+  <script src="pet.js"></script>
+</body>
+</html>

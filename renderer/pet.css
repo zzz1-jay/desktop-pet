@@ -1,0 +1,41 @@
+/* 桌宠窗口：整体透明，只有宠物本体可见 */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* 三层动画容器铺满窗口，各自负责一种变换 */
+#float,
+#tilt,
+#bounce {
+  position: absolute;
+  inset: 0;
+}
+
+/* 待机浮动：由 pet.js 按 pet.json 的参数设置时长，这里给个默认值 */
+#float {
+  animation: float 3.2s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* 宠物画布：64×64 素材由代码放大显示，pixelated 保持像素边缘锐利 */
+#pet {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  transform: translateX(-50%);
+  image-rendering: pixelated;
+}
