@@ -28,8 +28,9 @@ function chunk(type, data) {
   return out;
 }
 
-// rgba：长度为 w*h*4 的缓冲；返回 PNG 文件的 Buffer
+// rgba：长度为 w*h*4 的缓冲（Buffer 或 Uint8ClampedArray 均可）；返回 PNG 文件的 Buffer
 function encodePNG(rgba, w, h) {
+  const pixels = Buffer.isBuffer(rgba) ? rgba : Buffer.from(rgba);
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(w, 0);
   ihdr.writeUInt32BE(h, 4);
@@ -40,7 +41,7 @@ function encodePNG(rgba, w, h) {
   const stride = 1 + w * 4;
   const raw = Buffer.alloc(h * stride);
   for (let y = 0; y < h; y++) {
-    rgba.copy(raw, y * stride + 1, y * w * 4, (y + 1) * w * 4);
+    pixels.copy(raw, y * stride + 1, y * w * 4, (y + 1) * w * 4);
   }
 
   return Buffer.concat([

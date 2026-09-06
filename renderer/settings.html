@@ -10,20 +10,49 @@
     <header>
       <div class="title">
         <span class="name">设置</span>
-        <span class="sub">改名字 / 编辑人设提示词</span>
+        <span class="sub">形象 / 名字 / 人设 / 大小</span>
       </div>
       <button id="close" title="关闭 (Esc)">×</button>
     </header>
 
     <main>
-      <label class="field-label" for="name">名字</label>
-      <input id="name" type="text" maxlength="20" placeholder="例如：小橘" />
+      <!-- 形象：当前形象 + 形象列表 + 上传入口 -->
+      <section class="block">
+        <div class="section-title">形象</div>
+        <div class="current-pet">
+          <img id="current-avatar" class="avatar" alt="当前形象" />
+          <div class="current-info">
+            <div id="current-name" class="current-name">—</div>
+            <button id="upload" class="upload-btn">📷 上传图片生成新形象</button>
+          </div>
+        </div>
+        <div id="pet-list" class="pet-list"></div>
+      </section>
 
-      <label class="field-label" for="persona">人设提示词（告诉 AI 它是谁）</label>
-      <textarea id="persona" rows="10" placeholder="例如：你是一只圆滚滚的像素橘猫，性格黏人又贪吃……"></textarea>
-      <p class="hint">
-        人设跟着形象走：换形象时会使用那个形象自己的提示词。保存后下一句对话就生效。
-      </p>
+      <!-- 名字 -->
+      <section class="block">
+        <label class="field-label" for="name">名字</label>
+        <input id="name" type="text" maxlength="20" placeholder="例如：小橘" />
+      </section>
+
+      <!-- 人设 -->
+      <section class="block">
+        <label class="field-label" for="persona">人设提示词（告诉 AI 它是谁）</label>
+        <textarea id="persona" rows="7" placeholder="例如：你是一只圆滚滚的像素橘猫，性格黏人又贪吃……"></textarea>
+        <p class="hint">人设跟着形象走：换形象时会使用那个形象自己的提示词。</p>
+      </section>
+
+      <!-- 大小 -->
+      <section class="block">
+        <label class="field-label" for="scale">显示大小（保存后立刻生效）</label>
+        <select id="scale">
+          <option value="2">2 倍 · 128px 小巧</option>
+          <option value="3">3 倍 · 192px 标准（推荐）</option>
+          <option value="4">4 倍 · 256px 存在感</option>
+          <option value="5">5 倍 · 320px 巨大</option>
+          <option value="6">6 倍 · 384px 铺满桌面</option>
+        </select>
+      </section>
     </main>
 
     <footer>

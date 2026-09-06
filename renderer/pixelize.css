@@ -1,4 +1,4 @@
-/* 设置窗口：和聊天窗同一套像素风样式 */
+/* 像素化窗口：和聊天 / 设置同一套像素风样式 */
 html,
 body {
   margin: 0;
@@ -24,7 +24,7 @@ header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 10px 14px;
   background: #f5a860;
   border-bottom: 2px solid #4a2e1e;
 }
@@ -66,125 +66,71 @@ header {
 main {
   flex: 1;
   overflow-y: auto;
-  padding: 14px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 
-.block {
-  display: flex;
-  flex-direction: column;
-}
-
-.section-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #4a2e1e;
-  margin-bottom: 8px;
-  padding-bottom: 4px;
-  border-bottom: 2px solid #f0dcc2;
-}
-
-/* 当前形象 */
-.current-pet {
+.previews {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
+  justify-content: center;
+  gap: 14px;
 }
 
-.avatar {
-  width: 64px;
-  height: 64px;
-  image-rendering: pixelated;
-  background: #fff4e1;
-  border: 2px solid #4a2e1e;
-  border-radius: 10px;
-  flex-shrink: 0;
-}
-
-.current-info {
+figure {
+  margin: 0;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 6px;
 }
 
-.current-name {
-  font-size: 15px;
-  font-weight: 700;
-  color: #4a2e1e;
+figcaption {
+  font-size: 12px;
+  color: #7a4a28;
 }
 
-.upload-btn {
-  padding: 6px 10px;
+.arrow {
+  font-size: 22px;
+  color: #d8823c;
+  font-weight: 700;
+}
+
+#source {
+  width: 220px;
+  height: 220px;
+  object-fit: contain;
+  background: #f3ede4;
+  border: 2px solid #e8c9a0;
+  border-radius: 10px;
+}
+
+#result {
+  width: 220px;
+  height: 220px;
+  image-rendering: pixelated;
+  background: #fff4e1;
   border: 2px solid #4a2e1e;
   border-radius: 10px;
-  background: #fff4e1;
-  color: #4a2e1e;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
 }
 
-.upload-btn:hover {
-  background: #ffd9a8;
-}
-
-/* 形象列表（点击切换） */
-.pet-list {
+.controls {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
 }
 
-.pet-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 6px;
-  width: 76px;
-  border: 2px solid #e8c9a0;
-  border-radius: 10px;
-  background: #ffffff;
-  cursor: pointer;
-  font-size: 11px;
-  color: #4a2e1e;
-}
-
-.pet-item img {
-  width: 44px;
-  height: 44px;
-  image-rendering: pixelated;
-}
-
-.pet-item:hover {
-  border-color: #d8823c;
-}
-
-.pet-item.active {
-  border-color: #4a2e1e;
-  background: #fff4e1;
-  font-weight: 700;
-}
-
-.pet-item.active::after {
-  content: '当前';
-  font-size: 10px;
-  color: #d8823c;
-}
-
-.field-label {
+.controls label {
   font-size: 12px;
   font-weight: 700;
   color: #7a4a28;
-  margin: 6px 0 6px;
+  margin-top: 4px;
 }
 
-#name,
-#persona,
-#scale {
+.controls select,
+.controls input {
   padding: 8px 10px;
   border: 2px solid #4a2e1e;
   border-radius: 10px;
@@ -193,34 +139,25 @@ main {
   color: #3b2314;
   outline: none;
   font-family: inherit;
-  box-sizing: border-box;
-  width: 100%;
 }
 
-#name:focus,
-#persona:focus,
-#scale:focus {
+.controls select:focus,
+.controls input:focus {
   border-color: #d8823c;
-}
-
-#persona {
-  resize: vertical;
-  line-height: 1.6;
-  min-height: 180px;
 }
 
 .hint {
   font-size: 11px;
   color: #a08a72;
   line-height: 1.6;
-  margin: 8px 0 0;
+  margin: 0;
 }
 
 footer {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 14px;
+  padding: 10px 16px;
   border-top: 2px solid #e8c9a0;
   background: #fff3e2;
 }

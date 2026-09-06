@@ -1,13 +1,39 @@
 // 桌宠主进程：负责窗口、托盘、拖拽和位置记忆（动画都在渲染进程里）
-const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, dialog } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { encodePNG } = require('./shared/png');
 const cat = require('./shared/cat-map');
 
-const PET_DIR = path.join(__dirname, 'assets', 'pets', 'default');
+const PETS_DIR = path.join(__dirname, 'assets', 'pets');
+const ACTIVE_PET_PATH = path.join(PETS_DIR, 'active.json');
 const DATA_DIR = path.join(__dirname, 'data');
 const STATE_PATH = path.join(DATA_DIR, 'state.json');
+
+// 当前使用的形象目录名（换装 / 切换时写入 active.json）
+function getActiveFolder() {
+  try {
+    const f = JSON.parse(fs.readFileSync(ACTIVE_PET_PATH, 'utf8')).folder;
+    return typeof f === 'string' ? f : 'default';
+  } catch {
+    return 'default';
+  }
+}
+
+function getPetDir(folder) {
+  return path.join(PETS_DIR, folder);
+}
+
+function loadPetConfig(folder) {
+  return JSON.parse(fs.readFileSync(path.join(getPetDir(folder), 'pet.json'), 'utf8'));
+}
+
+// 精灵图读成 dataURL（设置窗头像 / 自定义形象渲染用）
+function readSpriteDataUrl(folder) {
+  const p = path.join(getPetDir(folder), 'sprite.png');
+  if (!fs.existsSync(p)) return null;
+  return 'data:image/png;base64,' + fs.readFileSync(p).toString('base64');
+}
 
 // 小橘的默认人设（每个形象在 pet.json 里存自己的 persona，换形象即换人设）
 const CAT_PERSONA =
@@ -59,10 +85,11 @@ function renderSpritePNG() {
 // 首次运行时把代码画的小猫落盘，建立「一个形象 = 一个文件夹」的结构；
 // 老版本的 pet.json 如果没有人设字段，补上默认人设
 function ensureDefaultPet() {
-  fs.mkdirSync(PET_DIR, { recursive: true });
-  const spritePath = path.join(PET_DIR, 'sprite.png');
+  const petDir = getPetDir('default');
+  fs.mkdirSync(petDir, { recursive: true });
+  const spritePath = path.join(petDir, 'sprite.png');
   if (!fs.existsSync(spritePath)) fs.writeFileSync(spritePath, renderSpritePNG());
-  const configPath = path.join(PET_DIR, 'pet.json');
+  const configPath = path.join(petDir, 'pet.json');
   let cfg = null;
   if (fs.existsSync(configPath)) {
     try {
@@ -80,11 +107,16 @@ function ensureDefaultPet() {
 }
 
 ensureDefaultPet();
-const petConfig = JSON.parse(fs.readFileSync(path.join(PET_DIR, 'pet.json'), 'utf8'));
+let activeFolder = getActiveFolder();
+let petConfig = loadPetConfig(activeFolder);
 
-// 窗口比画面大一圈：下方 8px 落地余量，上方留空间给弹跳动画
-const WIN_W = petConfig.size * petConfig.displayScale + 28;
-const WIN_H = petConfig.size * petConfig.displayScale + 48;
+// 窗口尺寸跟着当前形象的显示大小走；下方 8px 落地余量，上方留空间给弹跳动画
+function petWindowSize() {
+  return {
+    width: petConfig.size * petConfig.displayScale + 28,
+    height: petConfig.size * petConfig.displayScale + 48,
+  };
+}
 
 // 聊天小窗尺寸
 const CHAT_W = 340;
@@ -119,20 +151,22 @@ function saveState() {
 // 上次的位置可能已经不在任何屏幕上了（比如拔了显示器），这时回退到默认位置
 function pickWindowPosition(state) {
   const { workArea } = screen.getPrimaryDisplay();
-  const defaultPos = { x: workArea.x + workArea.width - WIN_W - 40, y: workArea.y + workArea.height - WIN_H - 8 };
+  const { width: w, height: h } = petWindowSize();
+  const defaultPos = { x: workArea.x + workArea.width - w - 40, y: workArea.y + workArea.height - h - 8 };
   if (typeof state.x !== 'number' || typeof state.y !== 'number') return defaultPos;
   const onSomeScreen = screen.getAllDisplays().some((d) => {
     const { x, y, width, height } = d.workArea;
-    return state.x >= x - WIN_W + 40 && state.x < x + width - 40 && state.y >= y && state.y < y + height - 40;
+    return state.x >= x - w + 40 && state.x < x + width - 40 && state.y >= y && state.y < y + height - 40;
   });
   return onSomeScreen ? { x: state.x, y: state.y } : defaultPos;
 }
 
 function createPetWindow() {
   const pos = pickWindowPosition(loadState());
+  const { width, height } = petWindowSize();
   petWindow = new BrowserWindow({
-    width: WIN_W,
-    height: WIN_H,
+    width,
+    height,
     x: pos.x,
     y: pos.y,
     transparent: true,
@@ -157,17 +191,19 @@ function createPetWindow() {
 
 // ---- 托盘 ----
 
-function createTray() {
-  const icon = nativeImage
-    .createFromPath(path.join(PET_DIR, 'sprite.png'))
+function buildTrayIcon() {
+  return nativeImage
+    .createFromPath(path.join(getPetDir(activeFolder), 'sprite.png'))
     .resize({ width: 16, height: 16 });
-  tray = new Tray(icon);
+}
+
+function createTray() {
+  tray = new Tray(buildTrayIcon());
   tray.setToolTip(`小桌宠 · ${petConfig.name}`);
   tray.setContextMenu(
     Menu.buildFromTemplate([
-      { label: '换形象（开发中）', enabled: false },
       {
-        label: '设置（改名字 / 人设）',
+        label: '设置（形象 / 人设 / 大小）',
         click: () => openSettingsWindow(),
       },
       { type: 'separator' },
@@ -221,9 +257,10 @@ function positionChatWindow() {
   const [px, py] = petWindow.getPosition();
   const display = screen.getDisplayNearestPoint({ x: px, y: py });
   const wa = display.workArea;
+  const { width: w } = petWindowSize();
 
   let x = px - CHAT_W - 8;
-  if (x < wa.x) x = px + WIN_W + 8;
+  if (x < wa.x) x = px + w + 8;
   x = Math.min(Math.max(x, wa.x), wa.x + wa.width - CHAT_W);
 
   let y = py - 60;
@@ -257,28 +294,25 @@ ipcMain.on('chat:close', () => {
 // 聊天窗加载完成后主动问一次当前形象信息（避免显示时机竞态）
 ipcMain.handle('chat:get-meta', () => ({ name: petConfig.name }));
 
-// 右键小猫弹出的快捷菜单
+// 右键小猫弹出的快捷菜单：只保留两项，其他个性化都在设置窗口里
 ipcMain.on('pet:menu', () => {
   if (!petWindow || petWindow.isDestroyed()) return;
   Menu.buildFromTemplate([
     {
-      label: `🐾 和${petConfig.name}聊天`,
+      label: `🐾 聊一聊`,
       click: () => showChatWindow(),
     },
-    { label: '🖼 换形象（阶段 3 开发中）', enabled: false },
     {
-      label: '✏️ 改名字 / 人设',
+      label: '⚙️ 设置',
       click: () => openSettingsWindow(),
     },
-    { type: 'separator' },
-    { label: '退出', click: () => app.quit() },
   ]).popup({ window: petWindow });
 });
 
 // ---- 设置窗口：改名字 / 编辑人设提示词 ----
 
-const SETTINGS_W = 360;
-const SETTINGS_H = 520;
+const SETTINGS_W = 380;
+const SETTINGS_H = 680;
 let settingsWindow = null;
 
 function createSettingsWindow() {
@@ -319,8 +353,9 @@ function openSettingsWindow() {
     const [px, py] = petWindow.getPosition();
     const display = screen.getDisplayNearestPoint({ x: px, y: py });
     const wa = display.workArea;
+    const { width: w } = petWindowSize();
 
-    let x = px + WIN_W + 8;
+    let x = px + w + 8;
     if (x + SETTINGS_W > wa.x + wa.width) x = px - SETTINGS_W - 8;
     x = Math.min(Math.max(x, wa.x), wa.x + wa.width - SETTINGS_W);
 
@@ -331,27 +366,103 @@ function openSettingsWindow() {
   settingsWindow.focus();
 }
 
+// ---- 形象切换 ----
+
+// 切换到指定形象：改指针、重载配置、通知桌宠窗口和设置窗、托盘图标跟着换
+function switchToPet(folder) {
+  const dir = getPetDir(folder);
+  if (!fs.existsSync(path.join(dir, 'pet.json'))) return { ok: false, error: '形象不存在喵' };
+
+  activeFolder = folder;
+  petConfig = loadPetConfig(folder);
+  fs.writeFileSync(ACTIVE_PET_PATH, JSON.stringify({ folder }, null, 2) + '\n');
+
+  applyPetWindowSize();
+  if (petWindow && !petWindow.isDestroyed()) {
+    petWindow.webContents.send('pet:config-changed', {
+      config: petConfig,
+      spriteDataUrl: petConfig.kind === 'image' ? readSpriteDataUrl(folder) : null,
+    });
+  }
+  if (tray) {
+    tray.setImage(buildTrayIcon());
+    tray.setToolTip(`小桌宠 · ${petConfig.name}`);
+  }
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.webContents.send('settings:refresh');
+  }
+  return { ok: true };
+}
+
+// 显示大小变化时，桌宠窗口尺寸实时跟上
+function applyPetWindowSize() {
+  if (!petWindow || petWindow.isDestroyed()) return;
+  const { width, height } = petWindowSize();
+  petWindow.setResizable(true);
+  petWindow.setSize(width, height);
+  petWindow.setResizable(false);
+}
+
+ipcMain.handle('pets:list', () => {
+  const out = [];
+  for (const entry of fs.readdirSync(PETS_DIR, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const cfgPath = path.join(getPetDir(entry.name), 'pet.json');
+    if (!fs.existsSync(cfgPath)) continue;
+    try {
+      const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+      out.push({
+        folder: entry.name,
+        name: cfg.name || entry.name,
+        active: entry.name === activeFolder,
+        spriteDataUrl: readSpriteDataUrl(entry.name),
+      });
+    } catch {
+      // 某个形象目录坏了就跳过，别影响其他的
+    }
+  }
+  return out;
+});
+
+ipcMain.handle('pets:switch', (_event, folder) => switchToPet(String(folder)));
+
 ipcMain.handle('settings:load', () => ({
   name: petConfig.name,
   persona: petConfig.persona || '',
+  displayScale: petConfig.displayScale,
+  folder: activeFolder,
+  spriteDataUrl: readSpriteDataUrl(activeFolder),
 }));
 
 ipcMain.handle('settings:save', (_event, data) => {
   const name = String(data?.name || '').trim();
   const persona = String(data?.persona || '').trim();
+  const scale = Number(data?.displayScale);
   if (!name) return { ok: false, error: '名字不能为空喵' };
   if (!persona) return { ok: false, error: '人设提示词不能为空喵（不然 AI 就不认识自己啦）' };
+  if (!Number.isInteger(scale) || scale < 2 || scale > 6) {
+    return { ok: false, error: '显示大小要在 2~6 倍之间喵' };
+  }
 
   // 更新内存与磁盘（pet.json 的其他字段原样保留）
   petConfig.name = name;
   petConfig.persona = persona;
+  const sizeChanged = scale !== petConfig.displayScale;
+  petConfig.displayScale = scale;
   try {
-    fs.writeFileSync(path.join(PET_DIR, 'pet.json'), JSON.stringify(petConfig, null, 2) + '\n');
+    fs.writeFileSync(path.join(getPetDir(activeFolder), 'pet.json'), JSON.stringify(petConfig, null, 2) + '\n');
   } catch (err) {
     return { ok: false, error: `保存失败：${err.message || err}` };
   }
 
   if (tray) tray.setToolTip(`小桌宠 · ${name}`);
+  if (sizeChanged) applyPetWindowSize();
+  if (petWindow && !petWindow.isDestroyed()) {
+    petWindow.webContents.send('pet:config-changed', {
+      config: petConfig,
+      spriteDataUrl: petConfig.kind === 'image' ? readSpriteDataUrl(activeFolder) : null,
+    });
+  }
   if (chatWindow && !chatWindow.isDestroyed()) {
     chatWindow.webContents.send('chat:meta', { name });
   }
@@ -360,6 +471,107 @@ ipcMain.handle('settings:save', (_event, data) => {
 
 ipcMain.on('settings:close', () => {
   if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.hide();
+});
+
+// ---- 上传图片 → 像素化 → 换装 ----
+
+const PIXELIZE_W = 560;
+const PIXELIZE_H = 760;
+let pixelizeWindow = null;
+
+function createPixelizeWindow() {
+  pixelizeWindow = new BrowserWindow({
+    width: PIXELIZE_W,
+    height: PIXELIZE_H,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: path.join(__dirname, 'pixelize-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false, // pixelize-preload 要 require 本地的量化模块
+    },
+  });
+
+  pixelizeWindow.loadFile(path.join(__dirname, 'renderer', 'pixelize.html'));
+
+  pixelizeWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      pixelizeWindow.hide();
+    }
+  });
+}
+
+ipcMain.on('pixelize:open', async () => {
+  // 弹系统文件选择框，选完把图片读成 dataURL 交给像素化窗口
+  const res = await dialog.showOpenDialog({
+    title: '选一张图片生成像素形象',
+    properties: ['openFile'],
+    filters: [{ name: '图片', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }],
+  });
+  if (res.canceled || !res.filePaths[0]) return;
+
+  const filePath = res.filePaths[0];
+  const ext = path.extname(filePath).slice(1).toLowerCase();
+  const mime = ext === 'jpg' ? 'jpeg' : ext;
+  const dataUrl = `data:image/${mime};base64,${fs.readFileSync(filePath).toString('base64')}`;
+
+  if (!pixelizeWindow || pixelizeWindow.isDestroyed()) createPixelizeWindow();
+  pixelizeWindow.show();
+  pixelizeWindow.focus();
+
+  const push = () => pixelizeWindow.webContents.send('pixelize:load-image', { dataUrl });
+  if (pixelizeWindow.webContents.isLoading()) {
+    pixelizeWindow.webContents.once('did-finish-load', push);
+  } else {
+    push();
+  }
+});
+
+ipcMain.on('pixelize:cancel', () => {
+  if (pixelizeWindow && !pixelizeWindow.isDestroyed()) pixelizeWindow.hide();
+});
+
+ipcMain.handle('pixelize:confirm', (_event, payload) => {
+  const name = String(payload?.name || '').trim() || '新形象';
+  const pixels = payload?.pixels;
+  if (!Array.isArray(pixels) || pixels.length !== 64 * 64 * 4) {
+    return { ok: false, error: '像素数据不对喵，重试一次吧' };
+  }
+
+  // 每个形象一个独立文件夹：sprite.png + pet.json
+  const folder = `pet-${Date.now()}`;
+  const dir = getPetDir(folder);
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'sprite.png'), encodePNG(Buffer.from(pixels), 64, 64));
+    const newPet = {
+      name,
+      kind: 'image',
+      sprite: 'sprite.png',
+      size: 64,
+      displayScale: petConfig.displayScale,
+      animation: petConfig.animation,
+      persona: petConfig.persona || DEFAULT_PET.persona, // 人设先沿用当前形象，之后可在设置里改
+    };
+    fs.writeFileSync(path.join(dir, 'pet.json'), JSON.stringify(newPet, null, 2) + '\n');
+  } catch (err) {
+    return { ok: false, error: `保存失败：${err.message || err}` };
+  }
+
+  // 保存即换装
+  const res = switchToPet(folder);
+  if (!res.ok) return res;
+  if (pixelizeWindow && !pixelizeWindow.isDestroyed()) pixelizeWindow.hide();
+  return { ok: true, folder };
 });
 
 // ---- AI 问答：GLM-4-Flash（OpenAI 兼容接口）----

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>生成像素形象</title>
+  <link rel="stylesheet" href="pixelize.css" />
+</head>
+<body>
+  <div class="panel">
+    <header>
+      <div class="title">
+        <span class="name">生成像素形象</span>
+        <span class="sub">缩到 64×64 + 色彩量化，就是"像素味"</span>
+      </div>
+      <button id="close" title="取消 (Esc)">×</button>
+    </header>
+
+    <main>
+      <div class="previews">
+        <figure>
+          <canvas id="source" width="240" height="240"></canvas>
+          <figcaption>原图</figcaption>
+        </figure>
+        <div class="arrow">→</div>
+        <figure>
+          <canvas id="result" width="64" height="64"></canvas>
+          <figcaption>64×64 形象</figcaption>
+        </figure>
+      </div>
+
+      <div class="controls">
+        <label for="colors">颜色数</label>
+        <select id="colors">
+          <option value="8">8 色 · 极简像素</option>
+          <option value="16">16 色 · 经典像素</option>
+          <option value="32" selected>32 色 · 细节均衡（推荐）</option>
+          <option value="64">64 色 · 接近原图</option>
+        </select>
+
+        <label for="pet-name">形象名字</label>
+        <input id="pet-name" type="text" maxlength="20" value="新形象" />
+      </div>
+
+      <p class="hint">
+        满意就点「保存并换装」，桌宠会立刻变身；人设会先沿用当前形象的，
+        之后可以在设置里改。照片建议用脸部特写，效果最好。
+      </p>
+    </main>
+
+    <footer>
+      <button id="save">保存并换装</button>
+      <span id="status" role="status"></span>
+    </footer>
+  </div>
+  <script src="pixelize.js"></script>
+</body>
+</html>
