@@ -639,7 +639,18 @@ ipcMain.handle('chat:ask', async (_event, messages) => {
   }
 
   const apiBase = cfg.apiBase || 'https://open.bigmodel.cn/api/paas/v4';
-  const model = cfg.model || 'glm-4-flash';
+  // 带图的消息用视觉模型（GLM-4V-Flash，同样免费），纯文字走 GLM-4-Flash
+  const isVision = Array.isArray(messages[messages.length - 1]?.content);
+  const model = isVision ? cfg.visionModel || 'glm-4v-flash' : cfg.model || 'glm-4-flash';
+  // 文本模型的对话历史里不能带「图片数组」格式的旧消息，压平成纯文字
+  const safeHistory = messages.map((m, idx) => {
+    if (!Array.isArray(m.content)) return m;
+    const text = m.content
+      .filter((part) => part.type === 'text')
+      .map((part) => part.text)
+      .join('\n');
+    return idx === messages.length - 1 ? m : { role: m.role, content: text || '（发了一张图片）' };
+  });
 
   // 等 AI 回复期间，让桌宠播放「说话」动画
   const talkTo = (on) => {
@@ -659,7 +670,7 @@ ipcMain.handle('chat:ask', async (_event, messages) => {
       body: JSON.stringify({
         model,
         stream: false,
-        messages: [{ role: 'system', content: petConfig.persona || DEFAULT_PET.persona }, ...messages],
+        messages: [{ role: 'system', content: petConfig.persona || DEFAULT_PET.persona }, ...safeHistory],
       }),
       signal: controller.signal,
     });

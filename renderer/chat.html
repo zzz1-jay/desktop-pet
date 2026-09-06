@@ -16,8 +16,12 @@
       <button id="close" title="关闭 (Esc)">×</button>
     </header>
     <main id="messages"></main>
+    <div id="attach" hidden>
+      <img id="attach-img" alt="待发送的截图" />
+      <button id="attach-remove" title="移除图片">×</button>
+    </div>
     <footer>
-      <input id="input" type="text" placeholder="跟小橘说点什么…" maxlength="500" />
+      <input id="input" type="text" placeholder="跟小橘说点什么…（可 Ctrl+V 粘贴截图）" maxlength="500" />
       <button id="send">发送</button>
     </footer>
   </div>
