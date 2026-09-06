@@ -15,3 +15,9 @@ Thumbs.db
 
 # ZCode 工具产物
 .zcode/
+# 运行时生成的本地数据（位置记忆、形象库）
+data/
+assets/
+
+# 预览图生成物
+tools/preview-*.png

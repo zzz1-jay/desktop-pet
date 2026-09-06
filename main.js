@@ -1,14 +1,68 @@
 // 桌宠主进程：负责窗口、托盘、拖拽和位置记忆（动画都在渲染进程里）
 const { app, BrowserWindow } = require('electron');
+const fs = require('fs');
 const path = require('path');
+const { encodePNG } = require('./shared/png');
+const cat = require('./shared/cat-map');
 
-// 形象尺寸与放大倍数（与 assets/pets/default/pet.json 保持一致）
-const SPRITE_SIZE = 64;
-const DISPLAY_SCALE = 3;
+const PET_DIR = path.join(__dirname, 'assets', 'pets', 'default');
+
+// 默认形象的配置。首次运行时写成 pet.json，之后想调参数直接改那个文件。
+const DEFAULT_PET = {
+  name: '小橘',
+  sprite: 'sprite.png',
+  size: cat.size,
+  displayScale: 3,
+  animation: {
+    floatPeriodMs: 3200,
+    floatAmplitudePx: 6,
+    blinkMinMs: 2500,
+    blinkMaxMs: 6000,
+    blinkDurationMs: 140,
+    tiltDeg: 8,
+  },
+};
+
+// 点阵 → 64×64 的 PNG 文件内容
+function renderSpritePNG() {
+  const n = cat.size;
+  const rgba = Buffer.alloc(n * n * 4);
+  const rgb = {};
+  for (const [ch, hex] of Object.entries(cat.palette)) {
+    rgb[ch] = [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+  }
+  cat.frames.open.forEach((row, y) => {
+    for (let x = 0; x < n; x++) {
+      const ch = row[x];
+      if (ch === '.') continue;
+      const [r, g, b] = rgb[ch];
+      const i = (y * n + x) * 4;
+      rgba[i] = r;
+      rgba[i + 1] = g;
+      rgba[i + 2] = b;
+      rgba[i + 3] = 255;
+    }
+  });
+  return encodePNG(rgba, n, n);
+}
+
+// 首次运行时把代码画的小猫落盘，建立「一个形象 = 一个文件夹」的结构
+function ensureDefaultPet() {
+  fs.mkdirSync(PET_DIR, { recursive: true });
+  const spritePath = path.join(PET_DIR, 'sprite.png');
+  if (!fs.existsSync(spritePath)) fs.writeFileSync(spritePath, renderSpritePNG());
+  const configPath = path.join(PET_DIR, 'pet.json');
+  if (!fs.existsSync(configPath)) {
+    fs.writeFileSync(configPath, JSON.stringify(DEFAULT_PET, null, 2) + '\n');
+  }
+}
+
+ensureDefaultPet();
+const petConfig = JSON.parse(fs.readFileSync(path.join(PET_DIR, 'pet.json'), 'utf8'));
 
 // 窗口比画面大一圈：下方 8px 落地余量，上方留空间给弹跳动画
-const WIN_W = SPRITE_SIZE * DISPLAY_SCALE + 28;
-const WIN_H = SPRITE_SIZE * DISPLAY_SCALE + 48;
+const WIN_W = petConfig.size * petConfig.displayScale + 28;
+const WIN_H = petConfig.size * petConfig.displayScale + 48;
 
 let petWindow = null;
 
@@ -29,6 +83,7 @@ function createPetWindow() {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      sandbox: false, // preload 里要 require 本地模块（cat-map / pet.json），需要关掉沙箱
     },
   });
 
