@@ -303,8 +303,17 @@ function showChatWindow() {
   positionChatWindow();
   chatWindow.show();
   chatWindow.focus();
-  // 聊天窗标题用当前形象的名字（设置里改了名字要能跟着变）
-  chatWindow.webContents.send('chat:meta', { name: petConfig.name });
+  // 聊天窗标题和头像用当前形象（设置里改名 / 换形象后要能跟着变）
+  pushChatMeta();
+}
+
+function pushChatMeta() {
+  if (chatWindow && !chatWindow.isDestroyed()) {
+    chatWindow.webContents.send('chat:meta', {
+      name: petConfig.name,
+      spriteDataUrl: readSpriteDataUrl(activeFolder),
+    });
+  }
 }
 
 ipcMain.on('chat:toggle', () => {
@@ -321,7 +330,10 @@ ipcMain.on('chat:close', () => {
 });
 
 // 聊天窗加载完成后主动问一次当前形象信息（避免显示时机竞态）
-ipcMain.handle('chat:get-meta', () => ({ name: petConfig.name }));
+ipcMain.handle('chat:get-meta', () => ({
+  name: petConfig.name,
+  spriteDataUrl: readSpriteDataUrl(activeFolder),
+}));
 
 // 右键小猫弹出的快捷菜单：只保留两项，其他个性化都在设置窗口里
 ipcMain.on('pet:menu', () => {
@@ -417,6 +429,9 @@ function switchToPet(folder) {
     tray.setImage(buildTrayIcon());
     tray.setToolTip(`小桌宠 · ${petConfig.name}`);
   }
+  if (chatWindow && !chatWindow.isDestroyed() && chatWindow.isVisible()) {
+    pushChatMeta(); // 聊天窗开着的时候换形象，标题和头像跟着换
+  }
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.webContents.send('settings:refresh');
   }
@@ -492,8 +507,20 @@ ipcMain.handle('settings:save', (_event, data) => {
       spriteDataUrl: petConfig.kind === 'image' ? readSpriteDataUrl(activeFolder) : null,
     });
   }
-  if (chatWindow && !chatWindow.isDestroyed()) {
-    chatWindow.webContents.send('chat:meta', { name });
+  pushChatMeta();
+  return { ok: true };
+});
+
+// 删除非当前形象：连文件夹一起删掉，当前形象不可删（先切换再删）
+ipcMain.handle('pets:delete', (_event, folder) => {
+  folder = String(folder);
+  if (folder === activeFolder) return { ok: false, error: '当前形象不能删，先切换到别的形象喵' };
+  const dir = getPetDir(folder);
+  if (!fs.existsSync(dir)) return { ok: false, error: '形象不存在喵' };
+  try {
+    fs.rmSync(dir, { recursive: true, force: true });
+  } catch (err) {
+    return { ok: false, error: `删除失败：${err.message || err}` };
   }
   return { ok: true };
 });

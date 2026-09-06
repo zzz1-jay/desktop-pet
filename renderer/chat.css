@@ -85,6 +85,7 @@ header {
 }
 
 .msg {
+  position: relative;
   max-width: 78%;
   padding: 8px 10px;
   border-radius: 10px;
@@ -92,6 +93,32 @@ header {
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* 删除按钮：平时淡显保证可发现，悬停气泡时变明显 */
+.msg .msg-del {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #4a2e1e;
+  border-radius: 50%;
+  background: #ffd9a8;
+  color: #4a2e1e;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.35;
+}
+
+.msg:hover .msg-del {
+  opacity: 1;
+}
+
+.msg .msg-del:hover {
+  background: #ff9a9a;
 }
 
 .msg.cat {

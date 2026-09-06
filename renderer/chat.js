@@ -1,5 +1,6 @@
 // 聊天窗渲染进程：管理消息气泡和输入框；问答通过 chatAPI.ask 走主进程
 // 支持粘贴截图（Ctrl+V）或拖入图片：带图消息自动走视觉模型看图说话
+// 悬停气泡可单条删除（界面和对话历史同步删，AI 就不再记得这句）
 const messagesEl = document.getElementById('messages');
 const inputEl = document.getElementById('input');
 const sendEl = document.getElementById('send');
@@ -8,7 +9,10 @@ const attachImgEl = document.getElementById('attach-img');
 const attachRemoveEl = document.getElementById('attach-remove');
 
 // 对话历史（发给 AI 的内容，不含系统提示词——那段由主进程统一加）
+// 每条带唯一 id，和气泡上的 data-id 对应，删除时两边一起删
 const history = [];
+let msgSeq = 0;
+const nextMsgId = () => ++msgSeq;
 
 let pendingImage = null; // 待发送截图的 dataURL（已压缩）
 
@@ -16,17 +20,36 @@ function scrollToEnd() {
   messagesEl.scrollTop = messagesEl.scrollHeight;
 }
 
-function addBubble(kind, text) {
+// 给气泡挂上删除按钮（欢迎语没有 id，就不带删除）
+function attachDeleteButton(div, id) {
+  if (!id) return;
+  div.dataset.id = id;
+  const del = document.createElement('button');
+  del.className = 'msg-del';
+  del.textContent = '×';
+  del.title = '删除这条对话';
+  del.addEventListener('click', () => {
+    const idx = history.findIndex((m) => m.id === id);
+    if (idx >= 0) history.splice(idx, 1);
+    div.remove();
+  });
+  div.appendChild(del);
+}
+
+function addBubble(kind, text, id) {
   const div = document.createElement('div');
   div.className = `msg ${kind}`;
-  div.textContent = text;
+  const span = document.createElement('span');
+  span.textContent = text;
+  div.appendChild(span);
+  attachDeleteButton(div, id);
   messagesEl.appendChild(div);
   scrollToEnd();
   return div;
 }
 
 // 用户消息带截图时：气泡里显示缩略图 + 文字
-function addUserImageBubble(dataUrl, text) {
+function addUserImageBubble(dataUrl, text, id) {
   const div = document.createElement('div');
   div.className = 'msg user';
   const img = document.createElement('img');
@@ -38,6 +61,7 @@ function addUserImageBubble(dataUrl, text) {
     p.textContent = text;
     div.appendChild(p);
   }
+  attachDeleteButton(div, id);
   messagesEl.appendChild(div);
   scrollToEnd();
 }
@@ -106,8 +130,10 @@ async function send() {
   inputEl.value = '';
 
   if (pendingImage) {
-    addUserImageBubble(pendingImage, text);
+    const id = nextMsgId();
+    addUserImageBubble(pendingImage, text, id);
     history.push({
+      id,
       role: 'user',
       content: [
         { type: 'image_url', image_url: { url: pendingImage } },
@@ -116,8 +142,9 @@ async function send() {
     });
     clearPendingImage();
   } else {
-    addBubble('user', text);
-    history.push({ role: 'user', content: text });
+    const id = nextMsgId();
+    addBubble('user', text, id);
+    history.push({ id, role: 'user', content: text });
   }
 
   const typingEl = addBubble('cat typing', '');
@@ -129,8 +156,9 @@ async function send() {
     typingEl.remove();
 
     if (reply.ok) {
-      history.push({ role: 'assistant', content: reply.content });
-      addBubble('cat', reply.content);
+      const id = nextMsgId();
+      history.push({ id, role: 'assistant', content: reply.content });
+      addBubble('cat', reply.content, id);
     } else {
       addBubble('error', reply.error);
     }
@@ -154,14 +182,14 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') window.chatAPI.close();
 });
 
-// 当前形象的名字：标题、输入框占位符、欢迎语都用它
+// 当前形象的名字和头像：标题、占位符、欢迎语都用它；换形象后跟着变
 function applyMeta(meta) {
-  if (!meta?.name) return;
-  document.getElementById('chat-name').textContent = meta.name;
-  inputEl.placeholder = `跟${meta.name}说点什么…（可 Ctrl+V 粘贴截图）`;
+  if (meta?.name) document.getElementById('chat-name').textContent = meta.name;
+  if (meta?.spriteDataUrl) document.getElementById('chat-avatar').src = meta.spriteDataUrl;
+  if (meta?.name) inputEl.placeholder = `跟${meta.name}说点什么…（可 Ctrl+V 粘贴截图）`;
 }
 
-// 窗口每次显示时，主进程会推当前形象的名字过来（设置里改名后能跟着变）
+// 窗口每次显示时，主进程会推当前形象信息过来（改名 / 换形象后能跟着变）
 window.chatAPI.onMeta(applyMeta);
 
 window.chatAPI.getMeta().then((meta) => {

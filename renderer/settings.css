@@ -139,6 +139,7 @@ main {
 }
 
 .pet-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -169,10 +170,45 @@ main {
   font-weight: 700;
 }
 
-.pet-item.active::after {
-  content: '当前';
+.pet-now {
   font-size: 10px;
   color: #d8823c;
+}
+
+/* 删除按钮：平时淡显，悬停卡片时变明显；点一下变「确认」再点才真删（防手滑） */
+.pet-del {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #4a2e1e;
+  border-radius: 50%;
+  background: #ffd9a8;
+  color: #4a2e1e;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  opacity: 0.35;
+}
+
+.pet-item:hover .pet-del {
+  opacity: 1;
+}
+
+.pet-del:hover {
+  background: #ff9a9a;
+}
+
+.pet-del.armed {
+  display: block;
+  width: auto;
+  border-radius: 8px;
+  padding: 0 5px;
+  background: #ff9a9a;
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .field-label {

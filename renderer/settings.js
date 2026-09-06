@@ -28,7 +28,40 @@ async function refreshAll() {
     label.textContent = pet.name;
     item.appendChild(img);
     item.appendChild(label);
-    if (!pet.active) {
+
+    if (pet.active) {
+      const now = document.createElement('span');
+      now.className = 'pet-now';
+      now.textContent = '当前';
+      item.appendChild(now);
+    } else {
+      // 非当前形象：悬停出现删除按钮，点一下变「确认」再点才真删（防手滑）
+      const del = document.createElement('span');
+      del.className = 'pet-del';
+      del.title = `删除 ${pet.name}`;
+      del.textContent = '×';
+      let armed = false;
+      let disarmTimer = null;
+      del.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!armed) {
+          armed = true;
+          del.textContent = '确认';
+          del.classList.add('armed');
+          disarmTimer = setTimeout(() => {
+            armed = false;
+            del.textContent = '×';
+            del.classList.remove('armed');
+          }, 4000);
+          return;
+        }
+        clearTimeout(disarmTimer);
+        const res = await window.settingsAPI.deletePet(pet.folder);
+        statusEl.textContent = res.ok ? `已删除 ${pet.name} ✓` : res.error;
+        refreshAll();
+      });
+      item.appendChild(del);
+
       item.addEventListener('click', async () => {
         statusEl.textContent = '切换中…';
         const res = await window.settingsAPI.switchPet(pet.folder);
