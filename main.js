@@ -1,5 +1,5 @@
 // 桌宠主进程：负责窗口、托盘、拖拽和位置记忆（动画都在渲染进程里）
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { encodePNG } = require('./shared/png');
@@ -92,6 +92,40 @@ function createPetWindow() {
 
 app.whenReady().then(() => {
   createPetWindow();
+});
+
+// ---- 拖拽：主进程每 16ms 读一次鼠标位置，把窗口「贴」在鼠标上 ----
+// 渲染进程只发开始 / 结束信号；顺便按鼠标横向移动量回传倾斜角度
+const tiltDeg = petConfig.animation.tiltDeg;
+let dragTimer = null;
+let dragOffset = { x: 0, y: 0 };
+let lastCursor = { x: 0, y: 0 };
+
+function clamp(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+ipcMain.on('pet:drag-start', () => {
+  if (!petWindow || dragTimer) return;
+  const cursor = screen.getCursorScreenPoint();
+  const [winX, winY] = petWindow.getPosition();
+  dragOffset = { x: cursor.x - winX, y: cursor.y - winY };
+  lastCursor = cursor;
+  dragTimer = setInterval(() => {
+    const c = screen.getCursorScreenPoint();
+    petWindow.setPosition(c.x - dragOffset.x, c.y - dragOffset.y);
+    const dx = c.x - lastCursor.x;
+    lastCursor = c;
+    petWindow.webContents.send('pet:tilt', clamp(dx * 0.5, -tiltDeg, tiltDeg));
+  }, 16);
+});
+
+ipcMain.on('pet:drag-end', () => {
+  if (dragTimer) {
+    clearInterval(dragTimer);
+    dragTimer = null;
+  }
+  if (petWindow) petWindow.webContents.send('pet:tilt', 0);
 });
 
 app.on('window-all-closed', () => {
