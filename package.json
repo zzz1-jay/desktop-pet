@@ -8,7 +8,7 @@
     "dist": "electron-builder --win"
   },
   "build": {
-    "appId": "com.zzzyjay.desktop-pet",
+    "appId": "cn.desktoppet.app",
     "productName": "小桌宠",
     "directories": {
       "output": "release",
