@@ -9,9 +9,17 @@ const PET_DIR = path.join(__dirname, 'assets', 'pets', 'default');
 const DATA_DIR = path.join(__dirname, 'data');
 const STATE_PATH = path.join(DATA_DIR, 'state.json');
 
+// 小橘的默认人设（每个形象在 pet.json 里存自己的 persona，换形象即换人设）
+const CAT_PERSONA =
+  '你是「小橘」，一只圆滚滚的橘色像素小猫桌宠，住在主人的 Windows 桌面上。' +
+  '性格黏人、好奇、有点贪吃。用简短的中文回答（一般不超过两三句话），语气可爱自然，' +
+  '偶尔可以用「喵」或颜文字收尾，但不要每句都用。' +
+  '如果主人问正经问题（比如学习、技术），就认真、简洁、准确地回答，保持小橘的角色感即可。';
+
 // 默认形象的配置。首次运行时写成 pet.json，之后想调参数直接改那个文件。
 const DEFAULT_PET = {
   name: '小橘',
+  persona: CAT_PERSONA,
   sprite: 'sprite.png',
   size: cat.size,
   displayScale: 3,
@@ -48,14 +56,26 @@ function renderSpritePNG() {
   return encodePNG(rgba, n, n);
 }
 
-// 首次运行时把代码画的小猫落盘，建立「一个形象 = 一个文件夹」的结构
+// 首次运行时把代码画的小猫落盘，建立「一个形象 = 一个文件夹」的结构；
+// 老版本的 pet.json 如果没有人设字段，补上默认人设
 function ensureDefaultPet() {
   fs.mkdirSync(PET_DIR, { recursive: true });
   const spritePath = path.join(PET_DIR, 'sprite.png');
   if (!fs.existsSync(spritePath)) fs.writeFileSync(spritePath, renderSpritePNG());
   const configPath = path.join(PET_DIR, 'pet.json');
-  if (!fs.existsSync(configPath)) {
+  let cfg = null;
+  if (fs.existsSync(configPath)) {
+    try {
+      cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    } catch {
+      cfg = null;
+    }
+  }
+  if (!cfg) {
     fs.writeFileSync(configPath, JSON.stringify(DEFAULT_PET, null, 2) + '\n');
+  } else if (!cfg.persona) {
+    cfg.persona = DEFAULT_PET.persona;
+    fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2) + '\n');
   }
 }
 
@@ -146,7 +166,10 @@ function createTray() {
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: '换形象（开发中）', enabled: false },
-      { label: '设置（开发中）', enabled: false },
+      {
+        label: '设置（改名字 / 人设）',
+        click: () => openSettingsWindow(),
+      },
       { type: 'separator' },
       {
         label: '退出',
@@ -209,21 +232,30 @@ function positionChatWindow() {
   chatWindow.setPosition(x, y);
 }
 
-ipcMain.on('chat:toggle', () => {
-  if (!petWindow || petWindow.isDestroyed()) return;
+function showChatWindow() {
   if (!chatWindow || chatWindow.isDestroyed()) createChatWindow();
-  if (chatWindow.isVisible()) {
-    chatWindow.hide();
-    return;
-  }
   positionChatWindow();
   chatWindow.show();
   chatWindow.focus();
+  // 聊天窗标题用当前形象的名字（设置里改了名字要能跟着变）
+  chatWindow.webContents.send('chat:meta', { name: petConfig.name });
+}
+
+ipcMain.on('chat:toggle', () => {
+  if (!petWindow || petWindow.isDestroyed()) return;
+  if (chatWindow && !chatWindow.isDestroyed() && chatWindow.isVisible()) {
+    chatWindow.hide();
+    return;
+  }
+  showChatWindow();
 });
 
 ipcMain.on('chat:close', () => {
   if (chatWindow && !chatWindow.isDestroyed()) chatWindow.hide();
 });
+
+// 聊天窗加载完成后主动问一次当前形象信息（避免显示时机竞态）
+ipcMain.handle('chat:get-meta', () => ({ name: petConfig.name }));
 
 // 右键小猫弹出的快捷菜单
 ipcMain.on('pet:menu', () => {
@@ -231,30 +263,109 @@ ipcMain.on('pet:menu', () => {
   Menu.buildFromTemplate([
     {
       label: `🐾 和${petConfig.name}聊天`,
-      click: () => {
-        if (!chatWindow || chatWindow.isDestroyed()) createChatWindow();
-        positionChatWindow();
-        chatWindow.show();
-        chatWindow.focus();
-      },
+      click: () => showChatWindow(),
     },
     { label: '🖼 换形象（阶段 3 开发中）', enabled: false },
-    { label: '✏️ 改名字 / 人设（下一步开放）', enabled: false },
+    {
+      label: '✏️ 改名字 / 人设',
+      click: () => openSettingsWindow(),
+    },
     { type: 'separator' },
     { label: '退出', click: () => app.quit() },
   ]).popup({ window: petWindow });
+});
+
+// ---- 设置窗口：改名字 / 编辑人设提示词 ----
+
+const SETTINGS_W = 360;
+const SETTINGS_H = 520;
+let settingsWindow = null;
+
+function createSettingsWindow() {
+  settingsWindow = new BrowserWindow({
+    width: SETTINGS_W,
+    height: SETTINGS_H,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: path.join(__dirname, 'settings-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      // 沙箱保持默认开启：settings-preload 只用 electron API
+    },
+  });
+
+  settingsWindow.loadFile(path.join(__dirname, 'renderer', 'settings.html'));
+
+  settingsWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      settingsWindow.hide();
+    }
+  });
+}
+
+function openSettingsWindow() {
+  if (!settingsWindow || settingsWindow.isDestroyed()) createSettingsWindow();
+  if (!settingsWindow.isVisible()) {
+    // 贴着桌宠放：优先放右边，放不下放左边
+    const [px, py] = petWindow.getPosition();
+    const display = screen.getDisplayNearestPoint({ x: px, y: py });
+    const wa = display.workArea;
+
+    let x = px + WIN_W + 8;
+    if (x + SETTINGS_W > wa.x + wa.width) x = px - SETTINGS_W - 8;
+    x = Math.min(Math.max(x, wa.x), wa.x + wa.width - SETTINGS_W);
+
+    let y = Math.min(Math.max(py, wa.y), wa.y + wa.height - SETTINGS_H);
+    settingsWindow.setPosition(x, y);
+  }
+  settingsWindow.show();
+  settingsWindow.focus();
+}
+
+ipcMain.handle('settings:load', () => ({
+  name: petConfig.name,
+  persona: petConfig.persona || '',
+}));
+
+ipcMain.handle('settings:save', (_event, data) => {
+  const name = String(data?.name || '').trim();
+  const persona = String(data?.persona || '').trim();
+  if (!name) return { ok: false, error: '名字不能为空喵' };
+  if (!persona) return { ok: false, error: '人设提示词不能为空喵（不然 AI 就不认识自己啦）' };
+
+  // 更新内存与磁盘（pet.json 的其他字段原样保留）
+  petConfig.name = name;
+  petConfig.persona = persona;
+  try {
+    fs.writeFileSync(path.join(PET_DIR, 'pet.json'), JSON.stringify(petConfig, null, 2) + '\n');
+  } catch (err) {
+    return { ok: false, error: `保存失败：${err.message || err}` };
+  }
+
+  if (tray) tray.setToolTip(`小桌宠 · ${name}`);
+  if (chatWindow && !chatWindow.isDestroyed()) {
+    chatWindow.webContents.send('chat:meta', { name });
+  }
+  return { ok: true };
+});
+
+ipcMain.on('settings:close', () => {
+  if (settingsWindow && !settingsWindow.isDestroyed()) settingsWindow.hide();
 });
 
 // ---- AI 问答：GLM-4-Flash（OpenAI 兼容接口）----
 // key 存在项目根目录的 config.local.json（已 gitignore），只在这里读，渲染进程拿不到
 
 const CONFIG_LOCAL_PATH = path.join(__dirname, 'config.local.json');
-
-const SYSTEM_PROMPT =
-  '你是「小橘」，一只圆滚滚的橘色像素小猫桌宠，住在主人的 Windows 桌面上。' +
-  '性格黏人、好奇、有点贪吃。用简短的中文回答（一般不超过两三句话），语气可爱自然，' +
-  '偶尔可以用「喵」或颜文字收尾，但不要每句都用。' +
-  '如果主人问正经问题（比如学习、技术），就认真、简洁、准确地回答，保持小猫的角色感即可。';
 
 function readLocalConfig() {
   try {
@@ -295,7 +406,7 @@ ipcMain.handle('chat:ask', async (_event, messages) => {
       body: JSON.stringify({
         model,
         stream: false,
-        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...messages],
+        messages: [{ role: 'system', content: petConfig.persona || DEFAULT_PET.persona }, ...messages],
       }),
       signal: controller.signal,
     });

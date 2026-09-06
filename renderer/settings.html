@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>设置</title>
+  <link rel="stylesheet" href="settings.css" />
+</head>
+<body>
+  <div class="panel">
+    <header>
+      <div class="title">
+        <span class="name">设置</span>
+        <span class="sub">改名字 / 编辑人设提示词</span>
+      </div>
+      <button id="close" title="关闭 (Esc)">×</button>
+    </header>
+
+    <main>
+      <label class="field-label" for="name">名字</label>
+      <input id="name" type="text" maxlength="20" placeholder="例如：小橘" />
+
+      <label class="field-label" for="persona">人设提示词（告诉 AI 它是谁）</label>
+      <textarea id="persona" rows="10" placeholder="例如：你是一只圆滚滚的像素橘猫，性格黏人又贪吃……"></textarea>
+      <p class="hint">
+        人设跟着形象走：换形象时会使用那个形象自己的提示词。保存后下一句对话就生效。
+      </p>
+    </main>
+
+    <footer>
+      <button id="save">保存</button>
+      <span id="status" role="status"></span>
+    </footer>
+  </div>
+  <script src="settings.js"></script>
+</body>
+</html>

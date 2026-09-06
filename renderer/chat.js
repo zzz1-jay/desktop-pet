@@ -19,8 +19,17 @@ function addBubble(kind, text) {
   return div;
 }
 
-// 小猫头像的欢迎语
-addBubble('cat', '喵～ 我是住在你桌面上的小橘，有什么想问的尽管说！');
+// 当前形象的名字：标题、输入框占位符、欢迎语都用它
+function applyMeta(meta) {
+  if (!meta?.name) return;
+  document.getElementById('chat-name').textContent = meta.name;
+  inputEl.placeholder = `跟${meta.name}说点什么…`;
+}
+
+window.chatAPI.getMeta().then((meta) => {
+  applyMeta(meta);
+  addBubble('cat', `喵～ 我是住在你桌面上的${meta?.name || '小桌宠'}，有什么想问的尽管说！`);
+});
 
 // ---- 发送流程 ----
 let pending = false;
@@ -73,3 +82,6 @@ document.getElementById('close').addEventListener('click', () => window.chatAPI.
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') window.chatAPI.close();
 });
+
+// 窗口每次显示时，主进程会推当前形象的名字过来（设置里改名后能跟着变）
+window.chatAPI.onMeta(applyMeta);
