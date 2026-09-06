@@ -100,3 +100,83 @@ fs.writeFileSync(path.join(__dirname, 'quant-src.png'), encodePNG(src, W, H));
 fs.writeFileSync(path.join(__dirname, 'quant-16.png'), encodePNG(upscale4(toPixel64(src, 16)), W, H));
 fs.writeFileSync(path.join(__dirname, 'quant-32.png'), encodePNG(upscale4(toPixel64(src, 32)), W, H));
 console.log('生成 quant-src.png / quant-16.png / quant-32.png');
+
+// ---- 全身像素小人管线验证：纯色背景 + 站立小人 → 抠背景 → 裁剪 → 缩放 → 量化 ----
+const { removeBackground, cropRGBA, fitToSprite } = require('../shared/pixelize');
+
+function drawPerson() {
+  const w = 400;
+  const h = 500;
+  const rgba = new Uint8ClampedArray(w * h * 4);
+  const set = (x, y, r, g, b, a = 255) => {
+    const i = (y * w + x) * 4;
+    rgba[i] = r;
+    rgba[i + 1] = g;
+    rgba[i + 2] = b;
+    rgba[i + 3] = a;
+  };
+  const inEllipse = (x, y, cx, cy, rx, ry) => ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1;
+  // 纯色浅灰背景
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) set(x, y, 225, 230, 238);
+  // 头
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (inEllipse(x, y, 200, 105, 52, 60)) set(x, y, 245, 210, 175);
+  // 头发
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (inEllipse(x, y, 200, 78, 58, 48) && y < 105) set(x, y, 70, 45, 30);
+  // 眼睛
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (inEllipse(x, y, 180, 112, 7, 9)) set(x, y, 50, 35, 25);
+    if (inEllipse(x, y, 220, 112, 7, 9)) set(x, y, 50, 35, 25);
+  }
+  // 身体（蓝色上衣）
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (inEllipse(x, y, 200, 300, 85, 130) && y > 155) set(x, y, 80, 130, 200);
+  // 手
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    if (inEllipse(x, y, 122, 300, 16, 16)) set(x, y, 245, 210, 175);
+    if (inEllipse(x, y, 278, 300, 16, 16)) set(x, y, 245, 210, 175);
+  }
+  // 裤子
+  for (let y = 380; y < h - 10; y++) for (let x = 0; x < w; x++) if (Math.abs(x - 178) < 28 || Math.abs(x - 222) < 28) set(x, y, 70, 80, 110);
+  // 鞋
+  for (let y = h - 30; y < h - 8; y++) for (let x = 0; x < w; x++) {
+    if (Math.abs(x - 178) < 34 || Math.abs(x - 222) < 34) set(x, y, 40, 40, 45);
+  }
+  return { rgba, w, h };
+}
+
+const person = drawPerson();
+fs.writeFileSync(path.join(__dirname, 'person-src.png'), encodePNG(person.rgba, person.w, person.h));
+
+// 管线：抠背景 → 裁掉多余背景 → 缩进 64×64 → 32 色量化
+const bgRemoved = removeBackground(person.rgba, person.w, person.h, 28);
+const cropped = cropRGBA(bgRemoved, person.w, person.h, 95, 30, 210, 460);
+const fitted = fitToSprite(cropped, 210, 460, 64);
+const quantized = quantizeRGBA(fitted, 32);
+
+// 铺在棋盘格上输出，直观检查透明区域
+function overChecker(rgba64, scale) {
+  const size = 64 * scale;
+  const out = new Uint8ClampedArray(size * size * 4);
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      const c = (Math.floor(x / 8) + Math.floor(y / 8)) % 2 ? 255 : 205;
+      const o = (y * size + x) * 4;
+      out[o] = c;
+      out[o + 1] = c;
+      out[o + 2] = c;
+      out[o + 3] = 255;
+    }
+  for (let y = 0; y < size; y++)
+    for (let x = 0; x < size; x++) {
+      const s = (Math.floor(y / scale) * 64 + Math.floor(x / scale)) * 4;
+      const a = rgba64[s + 3] / 255;
+      const o = (y * size + x) * 4;
+      out[o] = out[o] * (1 - a) + rgba64[s] * a;
+      out[o + 1] = out[o + 1] * (1 - a) + rgba64[s + 1] * a;
+      out[o + 2] = out[o + 2] * (1 - a) + rgba64[s + 2] * a;
+      out[o + 3] = 255;
+    }
+  return out;
+}
+
+fs.writeFileSync(path.join(__dirname, 'person-pixel.png'), encodePNG(overChecker(quantized, 5), 320, 320));
+console.log('生成 person-src.png（原图）/ person-pixel.png（抠背景像素小人，棋盘格=透明）');

@@ -10,7 +10,7 @@
     <header>
       <div class="title">
         <span class="name">生成像素形象</span>
-        <span class="sub">缩到 64×64 + 色彩量化，就是"像素味"</span>
+        <span class="sub">抠背景 → 拖框裁剪 → 缩到 64×64 → 色彩量化</span>
       </div>
       <button id="close" title="取消 (Esc)">×</button>
     </header>
@@ -18,8 +18,8 @@
     <main>
       <div class="previews">
         <figure>
-          <canvas id="source" width="240" height="240"></canvas>
-          <figcaption>原图</figcaption>
+          <canvas id="source"></canvas>
+          <figcaption>在左边图上拖一个框，框住整个人</figcaption>
         </figure>
         <div class="arrow">→</div>
         <figure>
@@ -29,21 +29,35 @@
       </div>
 
       <div class="controls">
-        <label for="colors">颜色数</label>
-        <select id="colors">
-          <option value="8">8 色 · 极简像素</option>
-          <option value="16">16 色 · 经典像素</option>
-          <option value="32" selected>32 色 · 细节均衡（推荐）</option>
-          <option value="64">64 色 · 接近原图</option>
-        </select>
-
-        <label for="pet-name">形象名字</label>
-        <input id="pet-name" type="text" maxlength="20" value="新形象" />
+        <div class="control-row">
+          <label class="check-label">
+            <input id="remove-bg" type="checkbox" checked />
+            抠背景（自动取四边颜色，纯色背景效果最好）
+          </label>
+        </div>
+        <div class="control-row">
+          <label for="tolerance">抠背景力度 <span id="tolerance-value">28</span></label>
+          <input id="tolerance" type="range" min="4" max="100" value="28" />
+        </div>
+        <div class="control-row">
+          <label for="colors">颜色数</label>
+          <select id="colors">
+            <option value="8">8 色 · 极简像素</option>
+            <option value="16">16 色 · 经典像素</option>
+            <option value="32" selected>32 色 · 细节均衡（推荐）</option>
+            <option value="64">64 色 · 接近原图</option>
+          </select>
+        </div>
+        <div class="control-row">
+          <label for="pet-name">形象名字</label>
+          <input id="pet-name" type="text" maxlength="20" value="新形象" />
+        </div>
       </div>
 
       <p class="hint">
-        满意就点「保存并换装」，桌宠会立刻变身；人设会先沿用当前形象的，
-        之后可以在设置里改。照片建议用脸部特写，效果最好。
+        全身照：把整个人框进虚线框，背景选「抠背景」就能得到透明背景的像素小人。
+        复杂背景抠不干净？先用手机相册 / 修图 App 的抠图功能把人抠出来再上传，
+        或者之后在像素编辑器里手动擦。保存后人设沿用当前形象，可在设置里改。
       </p>
     </main>
 

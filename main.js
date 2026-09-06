@@ -192,9 +192,38 @@ function createPetWindow() {
 // ---- 托盘 ----
 
 function buildTrayIcon() {
-  return nativeImage
+  const size = 32;
+  const img = nativeImage
     .createFromPath(path.join(getPetDir(activeFolder), 'sprite.png'))
-    .resize({ width: 16, height: 16 });
+    .resize({ width: size, height: size });
+
+  // 代码猫的精灵图自带透明背景，直接用；
+  // 照片形象是方形不透明的，裁成「圆形头像 + 透明边距」才不会在托盘里糊成一个小色块
+  if (petConfig.kind !== 'image') return img;
+
+  const inner = size - 4;
+  const src = Buffer.from(img.resize({ width: inner, height: inner }).getBitmap());
+  const out = Buffer.alloc(size * size * 4);
+  const off = 2;
+  for (let y = 0; y < inner; y++) {
+    src.copy(out, ((y + off) * size + off) * 4, y * inner * 4, (y + 1) * inner * 4);
+  }
+  const r = inner / 2;
+  const c = size / 2 - 0.5;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = x - c;
+      const dy = y - c;
+      if (dx * dx + dy * dy > r * r) {
+        const i = (y * size + x) * 4;
+        out[i] = 0;
+        out[i + 1] = 0;
+        out[i + 2] = 0;
+        out[i + 3] = 0;
+      }
+    }
+  }
+  return nativeImage.createFromBitmap(out, { width: size, height: size });
 }
 
 function createTray() {
@@ -475,9 +504,10 @@ ipcMain.on('settings:close', () => {
 
 // ---- 上传图片 → 像素化 → 换装 ----
 
-const PIXELIZE_W = 560;
-const PIXELIZE_H = 760;
+const PIXELIZE_W = 760;
+const PIXELIZE_H = 880;
 let pixelizeWindow = null;
+let pendingPixelizeImage = null; // 选好但还没交给像素化窗口的图片
 
 function createPixelizeWindow() {
   pixelizeWindow = new BrowserWindow({
@@ -522,19 +552,26 @@ ipcMain.on('pixelize:open', async () => {
   const filePath = res.filePaths[0];
   const ext = path.extname(filePath).slice(1).toLowerCase();
   const mime = ext === 'jpg' ? 'jpeg' : ext;
-  const dataUrl = `data:image/${mime};base64,${fs.readFileSync(filePath).toString('base64')}`;
+  pendingPixelizeImage = `data:image/${mime};base64,${fs.readFileSync(filePath).toString('base64')}`;
 
   if (!pixelizeWindow || pixelizeWindow.isDestroyed()) createPixelizeWindow();
   pixelizeWindow.show();
   pixelizeWindow.focus();
 
-  const push = () => pixelizeWindow.webContents.send('pixelize:load-image', { dataUrl });
+  // 推送 + 渲染进程启动时主动拉取（get-pending）双保险，避免加载时序竞态
+  const deliver = () => {
+    if (pendingPixelizeImage && pixelizeWindow && !pixelizeWindow.isDestroyed()) {
+      pixelizeWindow.webContents.send('pixelize:load-image', { dataUrl: pendingPixelizeImage });
+    }
+  };
   if (pixelizeWindow.webContents.isLoading()) {
-    pixelizeWindow.webContents.once('did-finish-load', push);
+    pixelizeWindow.webContents.once('did-finish-load', deliver);
   } else {
-    push();
+    deliver();
   }
 });
+
+ipcMain.handle('pixelize:get-pending', () => ({ dataUrl: pendingPixelizeImage }));
 
 ipcMain.on('pixelize:cancel', () => {
   if (pixelizeWindow && !pixelizeWindow.isDestroyed()) pixelizeWindow.hide();

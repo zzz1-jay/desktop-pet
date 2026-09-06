@@ -134,4 +134,140 @@ function quantizeRGBA(rgba, maxColors) {
   return out;
 }
 
-module.exports = { quantizeRGBA };
+// ---- 抠背景 / 裁剪 / 缩放（全身像素小人的三件套） ----
+
+// 容差抠背景：取四角平均色当背景色，从图片四边出发，
+// 把「与背景色足够接近」的连通区域全部变透明。
+// 复杂背景会有残留，可以在像素编辑器里手动擦（阶段 4）。
+function removeBackground(rgba, w, h, tolerance) {
+  const out = new Uint8ClampedArray(rgba);
+  if (w < 2 || h < 2 || tolerance <= 0) return out;
+
+  // 背景色：四个角各取 8×8 区域的平均
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let n = 0;
+  const corner = (cx, cy) => {
+    for (let y = cy; y < Math.min(cy + 8, h); y++)
+      for (let x = cx; x < Math.min(cx + 8, w); x++) {
+        const i = (y * w + x) * 4;
+        r += rgba[i];
+        g += rgba[i + 1];
+        b += rgba[i + 2];
+        n++;
+      }
+  };
+  corner(0, 0);
+  corner(w - 8, 0);
+  corner(0, h - 8);
+  corner(w - 8, h - 8);
+  const bgR = r / n;
+  const bgG = g / n;
+  const bgB = b / n;
+
+  const limit = tolerance * tolerance * 3; // 三通道平均差 ≤ tolerance
+  const near = (i) => {
+    const dr = rgba[i] - bgR;
+    const dg = rgba[i + 1] - bgG;
+    const db = rgba[i + 2] - bgB;
+    return dr * dr + dg * dg + db * db <= limit;
+  };
+
+  // 从四边种子点开始 BFS，只扩散到「接近背景色」的连通像素
+  const visited = new Uint8Array(w * h);
+  const queue = [];
+  const push = (x, y) => {
+    const p = y * w + x;
+    if (visited[p]) return;
+    const i = p * 4;
+    if (!near(i)) return;
+    visited[p] = 1;
+    queue.push(p);
+  };
+  for (let x = 0; x < w; x++) {
+    push(x, 0);
+    push(x, h - 1);
+  }
+  for (let y = 0; y < h; y++) {
+    push(0, y);
+    push(w - 1, y);
+  }
+  while (queue.length) {
+    const p = queue.pop();
+    out[p * 4 + 3] = 0;
+    const x = p % w;
+    const y = (p - x) / w;
+    if (x > 0) push(x - 1, y);
+    if (x < w - 1) push(x + 1, y);
+    if (y > 0) push(x, y - 1);
+    if (y < h - 1) push(x, y + 1);
+  }
+  return out;
+}
+
+// 裁剪出 {x, y, w, h} 区域
+function cropRGBA(rgba, w, h, x, y, cw, ch) {
+  const out = new Uint8ClampedArray(cw * ch * 4);
+  for (let j = 0; j < ch; j++) {
+    const sy = y + j;
+    if (sy < 0 || sy >= h) continue;
+    for (let i = 0; i < cw; i++) {
+      const sx = x + i;
+      if (sx < 0 || sx >= w) continue;
+      const s = (sy * w + sx) * 4;
+      const o = (j * cw + i) * 4;
+      out[o] = rgba[s];
+      out[o + 1] = rgba[s + 1];
+      out[o + 2] = rgba[s + 2];
+      out[o + 3] = rgba[s + 3];
+    }
+  }
+  return out;
+}
+
+// 等比缩放到 targetSize×targetSize 内并居中（长边贴边）。
+// 缩小时做「透明感知」的区域平均：透明像素不参与颜色平均，
+// 避免背景色在人物边缘渗出白边 / 黑边。
+function fitToSprite(rgba, w, h, targetSize) {
+  const out = new Uint8ClampedArray(targetSize * targetSize * 4);
+  const scale = Math.min(targetSize / w, targetSize / h);
+  const dw = Math.max(1, Math.round(w * scale));
+  const dh = Math.max(1, Math.round(h * scale));
+  const offX = Math.floor((targetSize - dw) / 2);
+  const offY = Math.floor((targetSize - dh) / 2);
+
+  for (let dy = 0; dy < dh; dy++) {
+    const sy0 = Math.floor(dy / scale);
+    const sy1 = Math.max(sy0 + 1, Math.floor((dy + 1) / scale));
+    for (let dx = 0; dx < dw; dx++) {
+      const sx0 = Math.floor(dx / scale);
+      const sx1 = Math.max(sx0 + 1, Math.floor((dx + 1) / scale));
+      let r = 0;
+      let g = 0;
+      let b = 0;
+      let a = 0;
+      let n = 0;
+      for (let sy = sy0; sy < Math.min(sy1, h); sy++)
+        for (let sx = sx0; sx < Math.min(sx1, w); sx++) {
+          const i = (sy * w + sx) * 4;
+          const alpha = rgba[i + 3] / 255;
+          r += rgba[i] * alpha;
+          g += rgba[i + 1] * alpha;
+          b += rgba[i + 2] * alpha;
+          a += alpha;
+          n++;
+        }
+      const o = ((dy + offY) * targetSize + (dx + offX)) * 4;
+      if (a > 0) {
+        out[o] = r / a;
+        out[o + 1] = g / a;
+        out[o + 2] = b / a;
+        out[o + 3] = (a / n) * 255;
+      }
+    }
+  }
+  return out;
+}
+
+module.exports = { quantizeRGBA, removeBackground, cropRGBA, fitToSprite };
