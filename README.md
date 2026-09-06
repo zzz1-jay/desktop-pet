@@ -56,19 +56,19 @@
 
 ### 阶段 0：环境准备
 
-- [ ] 安装 Node.js LTS（nodejs.org，一路下一步）
-- [ ] 安装 Git（git-scm.com），配置 user.name / user.email
+- [x] 安装 Node.js LTS（nodejs.org，一路下一步）
+- [x] 安装 Git（git-scm.com），配置 user.name / user.email（暂用占位身份 student，之后可改回真名）
 - [ ] 注册 GitHub，新建空仓库（建议名 `desktop-pet`，不要勾选自动生成 README）
 - [ ] 注册智谱开放平台（open.bigmodel.cn），拿到免费 API key
-- [ ] 项目首次 commit + push
+- [x] 项目首次 commit + push（commit 已完成；push 等建好 GitHub 仓库后补）
 
 ### 阶段 1（M1）：桌宠本体跑起来
 
-- [ ] Electron 项目骨架 + 透明无边框置顶窗口
-- [ ] 代码绘制的默认像素猫
-- [ ] 程序动画：浮动 / 拖拽倾斜 / 点击弹跳 / 眨眼
-- [ ] 位置记忆 + 托盘图标
-- [ ] 每完成一项就 commit
+- [x] Electron 项目骨架 + 透明无边框置顶窗口
+- [x] 代码绘制的默认像素猫
+- [x] 程序动画：浮动 / 拖拽倾斜 / 点击弹跳 / 眨眼
+- [x] 位置记忆 + 托盘图标
+- [x] 每完成一项就 commit
 
 ### 阶段 2：AI 问答聊天
 
@@ -107,15 +107,21 @@
 ```
 小桌宠/
 ├── README.md            # 本文件：总体计划 + 进度
-├── .gitignore           # node_modules / 密钥 / 打包产物
+├── .gitignore           # node_modules / 密钥 / 打包产物 / 运行时生成物
 ├── package.json
-├── main.js              # Electron 主进程：窗口、托盘、拖拽
+├── main.js              # Electron 主进程：窗口、托盘、拖拽、位置记忆
+├── preload.js           # 安全桥接：给渲染进程暴露点阵数据与拖拽 IPC
+├── shared/              # 主进程与渲染进程共用
+│   ├── cat-map.js       # 默认像素猫的调色板 + 64×64 点阵（代码逐格绘制）
+│   └── png.js           # 极简 PNG 编码器（生成 sprite.png / 预览图用）
 ├── renderer/            # 各界面
 │   ├── pet.html         # 桌宠本体
-│   ├── chat.html        # 聊天小窗
-│   └── editor.html      # 像素编辑器
-├── assets/pets/         # 形象库：每个形象一个文件夹（sprite.png + pet.json）
-└── config.local.json    # API key（不进 Git）
+│   ├── chat.html        # 聊天小窗（阶段 2）
+│   └── editor.html      # 像素编辑器（阶段 4）
+├── tools/render-preview.js  # 开发用：把猫渲染成 PNG 预览图，检查画得可不可爱
+├── assets/pets/         # 形象库：每个形象一个文件夹（sprite.png + pet.json，首次运行自动生成）
+├── data/                # 本地状态（桌宠位置记忆，不进 Git）
+└── config.local.json    # API key（不进 Git，阶段 2 使用）
 ```
 
 ## 七、常见坑（遇到了再看）
@@ -131,3 +137,8 @@
 | 日期 | 完成内容 |
 |---|---|
 | 2026-09-06 | 立项：确定技术选型、功能范围与总体计划 |
+| 2026-09-06 | M1-1：Electron 骨架 + 透明无边框置顶窗口（npmmirror 镜像 + 渲染进程沙箱关闭） |
+| 2026-09-06 | M1-2：代码逐格绘制默认像素橘猫（shared/cat-map.js，自动生成 sprite.png + pet.json） |
+| 2026-09-06 | M1-3：程序动画——待机浮动 / 随机眨眼 / 点击弹跳 / 拖拽倾斜 |
+| 2026-09-06 | M1-4：位置记忆（data/state.json）+ 托盘图标与右键菜单 + 单实例锁 |
+| 2026-09-06 | M1-5：README 进度更新，阶段 1（M1）完成 |
