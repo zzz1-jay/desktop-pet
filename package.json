@@ -1,13 +1,44 @@
 {
   "name": "desktop-pet",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "像素风桌面小宠物",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "build": {
+    "appId": "com.zzzyjay.desktop-pet",
+    "productName": "小桌宠",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "chat-preload.js",
+      "settings-preload.js",
+      "pixelize-preload.js",
+      "shared/**/*",
+      "renderer/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "DesktopPet-${version}-Setup.${ext}",
+      "shortcutName": "小桌宠"
+    }
   },
   "license": "MIT",
   "devDependencies": {
-    "electron": "^44.2.0"
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3"
   }
 }

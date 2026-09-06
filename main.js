@@ -1,14 +1,24 @@
 // 桌宠主进程：负责窗口、托盘、拖拽和位置记忆（动画都在渲染进程里）
-const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage, dialog, shell } = require('electron');
 const fs = require('fs');
 const path = require('path');
 const { encodePNG } = require('./shared/png');
 const cat = require('./shared/cat-map');
 
-const PETS_DIR = path.join(__dirname, 'assets', 'pets');
+// 开发时项目目录就是根目录；打包后 __dirname 在只读的 asar 包里，
+// 所有需要写入的文件（形象库 / 状态 / 配置）都放到用户数据目录
+if (app.isPackaged) {
+  // 打包版用自己的数据目录，和开发环境互不干扰
+  app.setPath('userData', path.join(app.getPath('appData'), '小桌宠'));
+}
+const ROOT_DIR = app.isPackaged ? app.getPath('userData') : __dirname;
+process.env.DESKTOP_PET_ROOT = ROOT_DIR; // preload 里读同样的位置
+
+const PETS_DIR = path.join(ROOT_DIR, 'assets', 'pets');
 const ACTIVE_PET_PATH = path.join(PETS_DIR, 'active.json');
-const DATA_DIR = path.join(__dirname, 'data');
+const DATA_DIR = path.join(ROOT_DIR, 'data');
 const STATE_PATH = path.join(DATA_DIR, 'state.json');
+const CONFIG_LOCAL_PATH = path.join(ROOT_DIR, 'config.local.json');
 
 // 当前使用的形象目录名（换装 / 切换时写入 active.json）
 function getActiveFolder() {
@@ -476,12 +486,19 @@ ipcMain.handle('settings:load', () => ({
   displayScale: petConfig.displayScale,
   folder: activeFolder,
   spriteDataUrl: readSpriteDataUrl(activeFolder),
+  apiKey: readLocalConfig().apiKey || '',
 }));
+
+// 打开智谱开放平台注册页（写死网址，不接受外部传入）
+ipcMain.on('settings:open-key-signup', () => {
+  shell.openExternal('https://open.bigmodel.cn');
+});
 
 ipcMain.handle('settings:save', (_event, data) => {
   const name = String(data?.name || '').trim();
   const persona = String(data?.persona || '').trim();
   const scale = Number(data?.displayScale);
+  const apiKey = String(data?.apiKey || '').trim();
   if (!name) return { ok: false, error: '名字不能为空喵' };
   if (!persona) return { ok: false, error: '人设提示词不能为空喵（不然 AI 就不认识自己啦）' };
   if (!Number.isInteger(scale) || scale < 2 || scale > 6) {
@@ -495,6 +512,10 @@ ipcMain.handle('settings:save', (_event, data) => {
   petConfig.displayScale = scale;
   try {
     fs.writeFileSync(path.join(getPetDir(activeFolder), 'pet.json'), JSON.stringify(petConfig, null, 2) + '\n');
+    // API key 存到 config.local.json（在 .gitignore 里，永不上传）
+    const localCfg = readLocalConfig();
+    localCfg.apiKey = apiKey;
+    fs.writeFileSync(CONFIG_LOCAL_PATH, JSON.stringify(localCfg, null, 2) + '\n');
   } catch (err) {
     return { ok: false, error: `保存失败：${err.message || err}` };
   }
@@ -645,8 +666,6 @@ ipcMain.handle('pixelize:confirm', (_event, payload) => {
 // ---- AI 问答：GLM-4-Flash（OpenAI 兼容接口）----
 // key 存在项目根目录的 config.local.json（已 gitignore），只在这里读，渲染进程拿不到
 
-const CONFIG_LOCAL_PATH = path.join(__dirname, 'config.local.json');
-
 function readLocalConfig() {
   try {
     return JSON.parse(fs.readFileSync(CONFIG_LOCAL_PATH, 'utf8'));
@@ -661,7 +680,7 @@ ipcMain.handle('chat:ask', async (_event, messages) => {
     return {
       ok: false,
       error:
-        '还没有配置 API key 喵。\n在项目根目录创建 config.local.json（可复制 config.local.example.json），填入智谱开放平台的免费 key，再发一句话试试。',
+        '还没有配置 API key 喵。\n右键桌宠 → 设置 → API 设置，粘贴智谱开放平台的免费 Key（注册即送），保存后就能聊天啦。',
     };
   }
 

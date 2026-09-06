@@ -5,17 +5,20 @@ const fs = require('fs');
 const path = require('path');
 const cat = require('./shared/cat-map');
 
+// 根目录由主进程通过环境变量传入（打包后是用户数据目录，开发时是项目目录）
+const ROOT = process.env.DESKTOP_PET_ROOT || __dirname;
+
 // 当前激活的形象（assets/pets/active.json 指向的目录）
 function getActiveFolder() {
   try {
-    const f = JSON.parse(fs.readFileSync(path.join(__dirname, 'assets', 'pets', 'active.json'), 'utf8')).folder;
+    const f = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets', 'pets', 'active.json'), 'utf8')).folder;
     return typeof f === 'string' ? f : 'default';
   } catch {
     return 'default';
   }
 }
 
-const petDir = path.join(__dirname, 'assets', 'pets', getActiveFolder());
+const petDir = path.join(ROOT, 'assets', 'pets', getActiveFolder());
 const petConfig = JSON.parse(fs.readFileSync(path.join(petDir, 'pet.json'), 'utf8'));
 
 // 自定义形象（照片像素化）的精灵图；代码画的默认猫用 cat-map，不需要图

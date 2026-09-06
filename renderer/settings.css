@@ -218,6 +218,47 @@ main {
   margin: 6px 0 6px;
 }
 
+/* API Key 输入行 */
+.key-row {
+  display: flex;
+  gap: 8px;
+}
+
+.key-row #apikey {
+  flex: 1;
+  padding: 8px 10px;
+  border: 2px solid #4a2e1e;
+  border-radius: 10px;
+  font-size: 12px;
+  background: #ffffff;
+  color: #3b2314;
+  outline: none;
+  font-family: inherit;
+  letter-spacing: 0.5px;
+}
+
+.key-row #apikey:focus {
+  border-color: #d8823c;
+}
+
+.key-row #key-toggle {
+  width: 40px;
+  border: 2px solid #4a2e1e;
+  border-radius: 10px;
+  background: #fff4e1;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.key-row #key-toggle:hover {
+  background: #ffd9a8;
+}
+
+main a {
+  color: #d8823c;
+  font-weight: 700;
+}
+
 #name,
 #persona,
 #scale {

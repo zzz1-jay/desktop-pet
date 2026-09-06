@@ -6,12 +6,14 @@ const statusEl = document.getElementById('status');
 const currentAvatarEl = document.getElementById('current-avatar');
 const currentNameEl = document.getElementById('current-name');
 const petListEl = document.getElementById('pet-list');
+const apikeyEl = document.getElementById('apikey');
 
 async function refreshAll() {
   const cfg = await window.settingsAPI.load();
   nameEl.value = cfg.name;
   personaEl.value = cfg.persona;
   scaleEl.value = String(cfg.displayScale);
+  apikeyEl.value = cfg.apiKey;
   currentNameEl.textContent = cfg.name;
   currentAvatarEl.src = cfg.spriteDataUrl || '';
 
@@ -81,6 +83,16 @@ document.getElementById('upload').addEventListener('click', () => {
   window.settingsAPI.openUpload();
 });
 
+// API Key：显示 / 隐藏切换 + 注册链接
+const keyToggleEl = document.getElementById('key-toggle');
+keyToggleEl.addEventListener('click', () => {
+  apikeyEl.type = apikeyEl.type === 'password' ? 'text' : 'password';
+});
+document.getElementById('key-signup').addEventListener('click', (e) => {
+  e.preventDefault();
+  window.settingsAPI.openKeySignup();
+});
+
 document.getElementById('close').addEventListener('click', () => window.settingsAPI.close());
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') window.settingsAPI.close();
@@ -92,6 +104,7 @@ document.getElementById('save').addEventListener('click', async () => {
     name: nameEl.value,
     persona: personaEl.value,
     displayScale: Number(scaleEl.value),
+    apiKey: apikeyEl.value.trim(),
   });
   if (res.ok) {
     statusEl.textContent = '已保存 ✓';

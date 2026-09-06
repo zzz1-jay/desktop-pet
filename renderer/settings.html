@@ -35,6 +35,20 @@
         <input id="name" type="text" maxlength="20" placeholder="例如：小橘" />
       </section>
 
+      <!-- API 设置 -->
+      <section class="block">
+        <div class="section-title">API 设置</div>
+        <label class="field-label" for="apikey">智谱 API Key（聊天的钥匙）</label>
+        <div class="key-row">
+          <input id="apikey" type="password" placeholder="粘贴你的 API Key" autocomplete="off" />
+          <button id="key-toggle" type="button" title="显示 / 隐藏">👁</button>
+        </div>
+        <p class="hint">
+          没有 Key？<a href="#" id="key-signup">去智谱开放平台免费注册</a>（open.bigmodel.cn，注册即送），
+          填好后聊天就能用了。
+        </p>
+      </section>
+
       <!-- 人设 -->
       <section class="block">
         <label class="field-label" for="persona">人设提示词（告诉 AI 它是谁）</label>

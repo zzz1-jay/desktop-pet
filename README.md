@@ -109,9 +109,18 @@
 
 ### 阶段 5：发布
 
-- [ ] electron-builder 打包成 exe
+- [x] electron-builder 打包成 exe（NSIS 安装包 + win-unpacked 绿色版）
 - [ ] README 完善（截图、使用说明）
 - [ ] 推送 GitHub，作为第一个作品
+
+## 九、打包与安装（npm run dist）
+
+1. `npm run dist` —— 产物在 `release/` 里：
+   - `DesktopPet-x.x.x-Setup.exe`：安装包（可选安装目录，带卸载器）
+   - `win-unpacked/小桌宠.exe`：绿色版，双击直接跑
+2. 安装版的数据（形象库 / 位置 / API Key）放在 `%APPDATA%\小桌宠\`，和开发环境互不干扰
+3. 装好后第一次聊天会提示配置 Key：右键桌宠 → 设置 → **API 设置**，粘贴智谱 Key（注册即送）即可
+4. 发 GitHub Release：仓库页 → Releases → Draft a new release → 把 `Setup.exe` 拖上去 → Publish
 
 ## 五、工作方式约定（vibe coding 纪律）
 
@@ -172,3 +181,4 @@
 | 2026-09-06 | 阶段3：右键菜单精简（聊一聊/设置）+ 设置统一入口 + 多形象架构（active.json）+ 上传图片像素化换装（中位切分量化，已端到端验证） |
 | 2026-09-06 | 全身像素化：容差抠背景 + 拖框裁剪 + 透明感知缩放（像素化窗口 v2）；照片形象托盘图标圆形化（真实照片实测通过） |
 | 2026-09-06 | 修复两个 bug（上传对话框目录卡死/爱心只在大尺寸可见）；聊天支持粘贴截图（自动切换 GLM-4V-Flash 视觉模型） |
+| 2026-09-06 | 三项体验改进（聊天头像跟随形象/对话逐条删除/形象可删除）+ API Key 设置界面 + 路径改造适配打包 + electron-builder 打包 exe 成功 |

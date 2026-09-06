@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('settingsAPI', {
   switchPet: (folder) => ipcRenderer.invoke('pets:switch', folder),
   deletePet: (folder) => ipcRenderer.invoke('pets:delete', folder),
   openUpload: () => ipcRenderer.send('pixelize:open'),
+  // 打开智谱开放平台注册页（申请免费 API Key）
+  openKeySignup: () => ipcRenderer.send('settings:open-key-signup'),
   // 换形象 / 切换后主进程通知设置窗刷新
   onRefresh: (callback) => ipcRenderer.on('settings:refresh', () => callback()),
 });

@@ -22,3 +22,8 @@ assets/
 # 预览图生成物
 tools/preview-*.png
 # 测试生成的图片
+# 打包产物
+release/
+
+# 测试生成的图片
+tools/*.png
