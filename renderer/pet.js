@@ -75,6 +75,33 @@ function bounce() {
   bounceLayer.classList.add('bounce');
 }
 
+// ---- 拍拍反应：眯眼笑 + 弹跳 + 头顶冒像素爱心 ----
+const heartCanvas = document.getElementById('heart');
+const HEART_MAP = ['0110110', '1111111', '1111111', '0111110', '0011100', '0001000'];
+const heartCtx = heartCanvas.getContext('2d');
+HEART_MAP.forEach((row, y) => {
+  [...row].forEach((ch, x) => {
+    if (ch === '1') {
+      heartCtx.fillStyle = '#f06292';
+      heartCtx.fillRect(x, y, 1, 1);
+    }
+  });
+});
+
+let patTimer = null;
+
+function pat() {
+  bounce();
+  // 被拍得美滋滋：眯眼笑一会儿
+  clearTimeout(patTimer);
+  drawFrame(cat.frames.blink);
+  patTimer = setTimeout(() => drawCurrent(), 650);
+  // 冒爱心
+  heartCanvas.classList.remove('pop');
+  void heartCanvas.offsetWidth;
+  heartCanvas.classList.add('pop');
+}
+
 // ---- 拖拽 + 点击判定 ----
 // 按住基本没动 → 算「点击」，播放弹跳；拖动了 → 主进程负责移动窗口
 let pressing = false;
@@ -95,10 +122,15 @@ function endPress() {
   document.body.classList.remove('dragging');
   window.petAPI.dragEnd();
   if (moved < 5 && Date.now() - pressAt < 250) {
-    bounce();
-    window.petAPI.toggleChat(); // 点一下小猫：弹跳 + 开关聊天小窗
+    pat(); // 左键点一下 = 拍拍它
   }
 }
+
+// 右键 = 快捷菜单（聊天 / 换形象 / 改名字与人设 / 退出），菜单由主进程弹出
+window.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  window.petAPI.showMenu();
+});
 
 window.addEventListener('mousedown', (e) => {
   if (e.button === 0) startPress();

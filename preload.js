@@ -16,6 +16,9 @@ contextBridge.exposeInMainWorld('petAPI', {
   // 点一下小猫：开关聊天小窗
   toggleChat: () => ipcRenderer.send('chat:toggle'),
 
+  // 右键小猫：弹出快捷菜单
+  showMenu: () => ipcRenderer.send('pet:menu'),
+
   // 聊天期间主进程通知开始 / 停止「说话」动画
   onTalk: (callback) => ipcRenderer.on('pet:talk', (_event, on) => callback(on)),
 });

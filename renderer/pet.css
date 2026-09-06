@@ -74,6 +74,42 @@ body.dragging #float {
   }
 }
 
+/* 拍拍时头顶冒出的像素爱心 */
+#heart {
+  position: absolute;
+  left: 50%;
+  bottom: 192px;
+  width: 42px;
+  height: 36px;
+  margin-left: -21px;
+  image-rendering: pixelated;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#heart.pop {
+  animation: heart-pop 0.9s ease-out forwards;
+}
+
+@keyframes heart-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.1);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-16px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px) scale(0.9);
+  }
+}
+
 /* 宠物画布：64×64 素材由代码放大显示，pixelated 保持像素边缘锐利 */
 #pet {
   position: absolute;

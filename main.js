@@ -225,6 +225,26 @@ ipcMain.on('chat:close', () => {
   if (chatWindow && !chatWindow.isDestroyed()) chatWindow.hide();
 });
 
+// 右键小猫弹出的快捷菜单
+ipcMain.on('pet:menu', () => {
+  if (!petWindow || petWindow.isDestroyed()) return;
+  Menu.buildFromTemplate([
+    {
+      label: `🐾 和${petConfig.name}聊天`,
+      click: () => {
+        if (!chatWindow || chatWindow.isDestroyed()) createChatWindow();
+        positionChatWindow();
+        chatWindow.show();
+        chatWindow.focus();
+      },
+    },
+    { label: '🖼 换形象（阶段 3 开发中）', enabled: false },
+    { label: '✏️ 改名字 / 人设（下一步开放）', enabled: false },
+    { type: 'separator' },
+    { label: '退出', click: () => app.quit() },
+  ]).popup({ window: petWindow });
+});
+
 // ---- AI 问答：GLM-4-Flash（OpenAI 兼容接口）----
 // key 存在项目根目录的 config.local.json（已 gitignore），只在这里读，渲染进程拿不到
 
