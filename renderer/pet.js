@@ -73,7 +73,10 @@ function endPress() {
   pressing = false;
   document.body.classList.remove('dragging');
   window.petAPI.dragEnd();
-  if (moved < 5 && Date.now() - pressAt < 250) bounce();
+  if (moved < 5 && Date.now() - pressAt < 250) {
+    bounce();
+    window.petAPI.toggleChat(); // 点一下小猫：弹跳 + 开关聊天小窗
+  }
 }
 
 window.addEventListener('mousedown', (e) => {

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>和小橘聊天</title>
+  <link rel="stylesheet" href="chat.css" />
+</head>
+<body>
+  <div class="panel">
+    <header>
+      <img class="avatar" src="../assets/pets/default/sprite.png" alt="小橘" />
+      <div class="title">
+        <span class="name">小橘</span>
+        <span class="sub">像素小猫 · AI 问答</span>
+      </div>
+      <button id="close" title="关闭 (Esc)">×</button>
+    </header>
+    <main id="messages"></main>
+    <footer>
+      <input id="input" type="text" placeholder="AI 接入中，下一步就绪…" disabled />
+      <button id="send" disabled>发送</button>
+    </footer>
+  </div>
+  <script src="chat.js"></script>
+</body>
+</html>

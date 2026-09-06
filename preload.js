@@ -12,4 +12,7 @@ contextBridge.exposeInMainWorld('petAPI', {
   dragEnd: () => ipcRenderer.send('pet:drag-end'),
   // 拖拽过程中主进程回传倾斜角度（度数），用来播放「被拎起来」的动画
   onTilt: (callback) => ipcRenderer.on('pet:tilt', (_event, deg) => callback(deg)),
+
+  // 点一下小猫：开关聊天小窗
+  toggleChat: () => ipcRenderer.send('chat:toggle'),
 });

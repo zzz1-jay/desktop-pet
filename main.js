@@ -66,8 +66,14 @@ const petConfig = JSON.parse(fs.readFileSync(path.join(PET_DIR, 'pet.json'), 'ut
 const WIN_W = petConfig.size * petConfig.displayScale + 28;
 const WIN_H = petConfig.size * petConfig.displayScale + 48;
 
+// 聊天小窗尺寸
+const CHAT_W = 340;
+const CHAT_H = 460;
+
 let petWindow = null;
+let chatWindow = null;
 let tray = null;
+let isQuitting = false;
 
 // ---- 位置记忆：存 / 读 data/state.json ----
 
@@ -153,6 +159,72 @@ function createTray() {
   });
 }
 
+// ---- 聊天小窗 ----
+
+function createChatWindow() {
+  chatWindow = new BrowserWindow({
+    width: CHAT_W,
+    height: CHAT_H,
+    show: false,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: path.join(__dirname, 'chat-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      // 沙箱保持默认开启：chat-preload 只用 electron API，不需要 require 本地模块
+    },
+  });
+
+  chatWindow.loadFile(path.join(__dirname, 'renderer', 'chat.html'));
+
+  // 点 × 只是藏起来，下次打开更快；真正退出时才销毁
+  chatWindow.on('close', (e) => {
+    if (!isQuitting) {
+      e.preventDefault();
+      chatWindow.hide();
+    }
+  });
+}
+
+// 聊天窗贴着桌宠放：优先放左边，放不下放右边，整体收紧到屏幕工作区内
+function positionChatWindow() {
+  const [px, py] = petWindow.getPosition();
+  const display = screen.getDisplayNearestPoint({ x: px, y: py });
+  const wa = display.workArea;
+
+  let x = px - CHAT_W - 8;
+  if (x < wa.x) x = px + WIN_W + 8;
+  x = Math.min(Math.max(x, wa.x), wa.x + wa.width - CHAT_W);
+
+  let y = py - 60;
+  y = Math.min(Math.max(y, wa.y), wa.y + wa.height - CHAT_H);
+
+  chatWindow.setPosition(x, y);
+}
+
+ipcMain.on('chat:toggle', () => {
+  if (!petWindow || petWindow.isDestroyed()) return;
+  if (!chatWindow || chatWindow.isDestroyed()) createChatWindow();
+  if (chatWindow.isVisible()) {
+    chatWindow.hide();
+    return;
+  }
+  positionChatWindow();
+  chatWindow.show();
+  chatWindow.focus();
+});
+
+ipcMain.on('chat:close', () => {
+  if (chatWindow && !chatWindow.isDestroyed()) chatWindow.hide();
+});
+
 // ---- 拖拽：主进程每 16ms 读一次鼠标位置，把窗口「贴」在鼠标上 ----
 // 渲染进程只发开始 / 结束信号；顺便按鼠标横向移动量回传倾斜角度
 const tiltDeg = petConfig.animation.tiltDeg;
@@ -213,6 +285,7 @@ if (!gotSingleInstanceLock) {
   });
 
   app.on('before-quit', () => {
+    isQuitting = true;
     stopDragging();
     saveState();
     if (tray) tray.destroy();

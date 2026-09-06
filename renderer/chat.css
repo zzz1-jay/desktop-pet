@@ -1,0 +1,194 @@
+/* 聊天小窗：奶油底色 + 深棕描边，和像素猫一个画风 */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  user-select: none;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  box-sizing: border-box;
+  background: #fff9f0;
+  border: 2px solid #4a2e1e;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* ---- 头部 ---- */
+header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #f5a860;
+  border-bottom: 2px solid #4a2e1e;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+  image-rendering: pixelated;
+  background: #fff4e1;
+  border: 2px solid #4a2e1e;
+  border-radius: 8px;
+}
+
+.title {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  line-height: 1.2;
+}
+
+.name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #4a2e1e;
+}
+
+.sub {
+  font-size: 11px;
+  color: #7a4a28;
+}
+
+#close {
+  width: 26px;
+  height: 26px;
+  border: 2px solid #4a2e1e;
+  border-radius: 8px;
+  background: #fff4e1;
+  color: #4a2e1e;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#close:hover {
+  background: #ffd9a8;
+}
+
+/* ---- 消息区 ---- */
+#messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  user-select: text;
+}
+
+.msg {
+  max-width: 78%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.msg.cat {
+  align-self: flex-start;
+  background: #ffffff;
+  border: 2px solid #e8c9a0;
+  color: #4a2e1e;
+  border-bottom-left-radius: 3px;
+}
+
+.msg.user {
+  align-self: flex-end;
+  background: #f5a860;
+  border: 2px solid #d8823c;
+  color: #3b2314;
+  border-bottom-right-radius: 3px;
+}
+
+.msg.error {
+  align-self: flex-start;
+  background: #ffe8e8;
+  border: 2px solid #e08585;
+  color: #8a3b3b;
+  font-size: 12px;
+}
+
+/* 等待回复时的三个跳动小点 */
+.msg.typing span {
+  display: inline-block;
+  animation: blink-dot 1.2s infinite;
+}
+
+.msg.typing span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.msg.typing span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes blink-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.25;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+/* ---- 输入区 ---- */
+footer {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 2px solid #e8c9a0;
+  background: #fff3e2;
+}
+
+#input {
+  flex: 1;
+  padding: 8px 10px;
+  border: 2px solid #4a2e1e;
+  border-radius: 10px;
+  font-size: 13px;
+  background: #ffffff;
+  color: #3b2314;
+  outline: none;
+}
+
+#input:focus {
+  border-color: #d8823c;
+}
+
+#input:disabled {
+  background: #f3ede4;
+  color: #a89a8a;
+}
+
+#send {
+  padding: 8px 14px;
+  border: 2px solid #4a2e1e;
+  border-radius: 10px;
+  background: #f5a860;
+  color: #3b2314;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#send:hover:not(:disabled) {
+  background: #ffbd7a;
+}
+
+#send:disabled {
+  background: #f3ede4;
+  color: #a89a8a;
+  cursor: default;
+}
