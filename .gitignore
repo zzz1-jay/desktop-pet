@@ -1,0 +1,17 @@
+# 依赖
+node_modules/
+
+# 打包产物
+dist/
+out/
+
+# 本地密钥与私密配置（绝不上传）
+config.local.json
+.env
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# ZCode 工具产物
+.zcode/
