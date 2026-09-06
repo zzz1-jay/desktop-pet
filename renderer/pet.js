@@ -10,6 +10,19 @@ const floatLayer = document.getElementById('float');
 const tiltLayer = document.getElementById('tilt');
 const bounceLayer = document.getElementById('bounce');
 
+// 拍拍时头顶冒出的像素爱心（画一次，位置和大小在 applyConfig 里跟随形象调整）
+const heartCanvas = document.getElementById('heart');
+const HEART_MAP = ['0110110', '1111111', '1111111', '0111110', '0011100', '0001000'];
+const heartCtx = heartCanvas.getContext('2d');
+HEART_MAP.forEach((row, y) => {
+  [...row].forEach((ch, x) => {
+    if (ch === '1') {
+      heartCtx.fillStyle = '#f06292';
+      heartCtx.fillRect(x, y, 1, 1);
+    }
+  });
+});
+
 let config = initialConfig;
 let anim = config.animation || {};
 let catFrames = initialSprite ? null : cat.frames; // 代码猫才有点阵帧
@@ -72,6 +85,15 @@ function applyConfig(newConfig, spriteDataUrl) {
   // 待机浮动参数
   floatLayer.style.animationDuration = (anim.floatPeriodMs || 3200) + 'ms';
   floatLayer.style.setProperty('--float-amp', (anim.floatAmplitudePx || 6) + 'px');
+
+  // 爱心特效：贴在头顶上方，大小跟着形象缩放（写死像素的话换倍数就会消失/错位）；
+  // 上方余量固定 40px，爱心最大不超过 32px 宽，保证任何倍数都完整显示
+  const displayH = config.size * config.displayScale;
+  const heartW = Math.min(32, Math.max(24, Math.round(displayH * 0.16)));
+  heartCanvas.style.bottom = 8 + displayH + 6 + 'px';
+  heartCanvas.style.width = heartW + 'px';
+  heartCanvas.style.height = Math.round((heartW * 6) / 7) + 'px';
+  heartCanvas.style.marginLeft = -Math.round(heartW / 2) + 'px';
 }
 
 // ---- 说话反应：聊天窗等 AI 回复时，猫张嘴、图片形象点头 ----
@@ -125,18 +147,6 @@ function bounce() {
 }
 
 // ---- 拍拍反应：眯眼笑（代码猫）+ 弹跳 + 头顶冒像素爱心 ----
-const heartCanvas = document.getElementById('heart');
-const HEART_MAP = ['0110110', '1111111', '1111111', '0111110', '0011100', '0001000'];
-const heartCtx = heartCanvas.getContext('2d');
-HEART_MAP.forEach((row, y) => {
-  [...row].forEach((ch, x) => {
-    if (ch === '1') {
-      heartCtx.fillStyle = '#f06292';
-      heartCtx.fillRect(x, y, 1, 1);
-    }
-  });
-});
-
 let patTimer = null;
 
 function pat() {

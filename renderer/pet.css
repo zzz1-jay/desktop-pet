@@ -74,17 +74,14 @@ body.dragging #float {
   }
 }
 
-/* 拍拍时头顶冒出的像素爱心 */
+/* 拍拍时头顶冒出的像素爱心（位置和大小由 pet.js 按当前形象尺寸动态设置） */
 #heart {
   position: absolute;
   left: 50%;
-  bottom: 192px;
-  width: 42px;
-  height: 36px;
-  margin-left: -21px;
   image-rendering: pixelated;
   opacity: 0;
   pointer-events: none;
+  z-index: 10;
 }
 
 #heart.pop {

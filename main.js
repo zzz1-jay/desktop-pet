@@ -508,6 +508,7 @@ const PIXELIZE_W = 760;
 const PIXELIZE_H = 880;
 let pixelizeWindow = null;
 let pendingPixelizeImage = null; // 选好但还没交给像素化窗口的图片
+let lastImportDir = null; // 上次成功导入的文件夹（对话框从这儿打开，方便连着传图）
 
 function createPixelizeWindow() {
   pixelizeWindow = new BrowserWindow({
@@ -541,9 +542,11 @@ function createPixelizeWindow() {
 }
 
 ipcMain.on('pixelize:open', async () => {
-  // 弹系统文件选择框，选完把图片读成 dataURL 交给像素化窗口
+  // 弹系统文件选择框：从上次导入的文件夹打开（第一次从桌面开始），
+  // 否则 Windows 会一直停在旧目录，看起来像「只能传同一张图」
   const res = await dialog.showOpenDialog({
     title: '选一张图片生成像素形象',
+    defaultPath: lastImportDir || app.getPath('desktop'),
     properties: ['openFile'],
     filters: [{ name: '图片', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }],
   });
@@ -553,6 +556,7 @@ ipcMain.on('pixelize:open', async () => {
   const ext = path.extname(filePath).slice(1).toLowerCase();
   const mime = ext === 'jpg' ? 'jpeg' : ext;
   pendingPixelizeImage = `data:image/${mime};base64,${fs.readFileSync(filePath).toString('base64')}`;
+  lastImportDir = path.dirname(filePath);
 
   if (!pixelizeWindow || pixelizeWindow.isDestroyed()) createPixelizeWindow();
   pixelizeWindow.show();

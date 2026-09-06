@@ -33,6 +33,7 @@ function loadImage(dataUrl) {
   const image = new Image();
   image.onload = () => {
     img = image;
+    statusEl.textContent = ''; // 清掉上一次的「已换装」残留
     const scale = Math.min(1, WORK_MAX / Math.max(image.width, image.height));
     const w = Math.max(1, Math.round(image.width * scale));
     const h = Math.max(1, Math.round(image.height * scale));
@@ -53,6 +54,9 @@ function loadImage(dataUrl) {
     sourceEl.style.height = Math.round(h * ds) + 'px';
 
     repixel();
+  };
+  image.onerror = () => {
+    statusEl.textContent = '这张图读不出来喵，换一张试试？';
   };
   image.src = dataUrl;
 }
